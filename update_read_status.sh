@@ -15,15 +15,17 @@
 
 # Display the list of chapters in the base readme.md file.
 
- Read the readme.md file and extract chapter information
+# Read the readme.md file and extract chapter information
 readme_file="README.md"
-chapter_pattern="^\[Chapter([0-9]+): (.+)\]\((.+)\)$"
+chapter_pattern="^\- \[Chapter([0-9]+): (.+)\]\((.+)\)$"
 
 # Declare arrays to store chapter numbers, titles, and links
 declare -a chapter_numbers
 declare -a chapter_titles
 declare -a chapter_directories
 
+echo -e "List of chapters: \n"
+echo -e "--------------------------------------------------\n"
 # Read each line from the readme file
 while IFS= read -r line; do
     # Check if the line matches the chapter pattern
