@@ -67,6 +67,7 @@ fi
 
 echo -e "Chapter $chapter_number is not read yet\n\n Creating the folder for the concerned chapter and create readme.md file in it.\n...."
 # Create the folder for the concerned chapter and create readme.md file in it.
-mkdir -p "$chapter_directory"
+mkdir -p "$(dirname "$chapter_directory")" 
+echo -e "# Chapter $chapter_number: ${chapter_titles[$chapter_number-1]}\n\n" > "$(dirname "$chapter_directory")/readme.md"
 
 echo -e "\n\nWe are set!!\n\nGood luck with Chapter $chapter_number!!\n" 
