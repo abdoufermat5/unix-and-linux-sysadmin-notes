@@ -51,5 +51,3 @@ The notes are organized in chapters. Each chapter has a `readme.md` file that co
 ## Why I am reading this book
 
 I am reading this book to learn more about Unix and Linux system administration. I am a software engineer and I have been working with Linux for a while. I want to learn more about the operating system and how to manage it. I am also interested in learning more about system administration in general. I am reading this book to get a better understanding of the topic. 
-
-My GOAL is to be the **ULTIMATE Software Engineer**.
