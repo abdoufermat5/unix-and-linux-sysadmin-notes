@@ -4,6 +4,8 @@ Unix and Linux system administration handbook by Evi Nemeth Garth Snyder Trent R
 
 ![book cover](https://crescentvale.com/wp-content/uploads/2017/12/unix-and-linux-system-administration-handbook-3.jpg)
 
+You can buy the book [here](https://www.amazon.com/UNIX-Linux-System-Administration-Handbook/dp/0134277554)
+
 ## POV
 
 This repository is a collection of notes from the book *Unix and Linux system administration handbook by Evi Nemeth Garth Snyder Trent R. Hein Ben Whaley Dan Mackin*. I am reading the 5th edition of the book. This shit is a comprehensive guide to Unix and Linux system administration. 
