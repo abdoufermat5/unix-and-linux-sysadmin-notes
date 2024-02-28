@@ -23,3 +23,20 @@ Ubuntu version numbers derive from the year and month of release, so 18.04 was r
 
 Two versions of Ubuntu are released every year, one in April and one in October. The April release is a long-term support (LTS) release, which is supported for five years. The October release is supported for nine months.
 
+> Red Hat has been a dominant force in the Linux world for more than two decades, and its distributions are widely used in North America and beyond. By the numbers, Red Hat, Inc., is the most successful open source software company in the world.
+
+Red Hat Enterprise Linux, often shortened to RHEL, targets production environments at large enterprises that require support and consulting services to keep their systems running smoothly. Somewhat paradoxically, RHEL is open source but requires a license. If you’re not willing to pay for the license, you’re not going to be running Red Hat.
+
+Red Hat also sponsors Fedora, a community-driven distribution that is a proving ground for new technologies that may eventually be included in RHEL. Fedora is a good choice for developers and enthusiasts who want to stay on the cutting edge of Linux.
+s
+> CentOS is a free, open source, community-driven distribution that is functionally compatible with RHEL. The CentOS distribution lacks the RHEL branding and logos, but it is otherwise identical to RHEL. CentOS is a good choice for organizations that want the benefits of RHEL without the cost.
+
+> SUSE Linux Enterprise Server (SLES) is a commercial distribution that is popular in Europe. SLES is developed and maintained by the German company SUSE. SUSE also sponsors openSUSE, a community-driven distribution that is a proving ground for new technologies that may eventually be included in SLES.
+
+
+> FreeBSD, first release in late 1993, is the most widely used of the BSD derivatives. Unlike Linux, FreeBSD is a complete operating system, not just a kernel. Both the kernel and userland software are licensed under the permissive BSD License, a fact that encourages development by and additions from the business community.
+
+
+## The man pages
+
+
