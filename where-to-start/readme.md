@@ -39,4 +39,50 @@ s
 
 ## The man pages
 
+Man pages are concise descriptions of indidual commands, drivers; file formats, or library routines. THey do not address more general topics such as "How do I install a new device?" or "WHy is this system so damn slow?"
 
+On Linux systems, you can find out the current default search path with the *manpath* command. If necessary, you can set the MANPATH environment variable to override the default search path.
+
+```bash
+$ export MANPATH=/home/share/localman:/usr/share/man
+```
+
+## Other Sources
+
+- [Dark Reading](https://www.darkreading.com/) : Security news, research, and analysis.
+- [Devops Reactions](http://devopsreactions.tumblr.com/) : A collection of gifs that capture the feelings of sysadmins and developers.
+- [Linux](https://www.linux.com/) : The Linux Foundation's official website.
+- [Linux Foundation](https://www.linuxfoundation.org/) : Employer of Linus Torvalds and steward of the Linux kernel.
+- [LWN](https://lwn.net/) : A weekly publication that covers the Linux kernel and other open source software.
+- [Servers for hackers](https://serversforhackers.com/) : High-quality videos, forums, and articles on administration
+
+## What is on my machine?
+
+```bash
+$ which gcc
+/usr/bin/gcc
+```
+
+The *which* command searches the directories in your PATH environment variable for the specified command. If the command is found, the full path to the command is printed. If the command is not found, nothing is printed.
+
+There is also a *whereis* command that searches for the binary, source, and manual page files for a command.
+
+```bash
+$ whereis gcc
+gcc: /usr/bin/gcc /usr/lib/gcc /usr/share/gcc /usr/share/man/man1/gcc.1.gz
+```
+
+If you are looking for a file, you can use the *locate* command. The *locate* command searches a database of files and directories on your system. The database is updated periodically by the *updatedb* command.
+
+```bash
+$ locate my-unbelivable-script.sh
+/home/abdou/my-unbelivable-script.sh
+```
+
+## Specialization and adjacent disciplines
+
+- **DevOps**: DevOps is not so much a specific function as a culture or operational philosophy. It aims to improve the efficiency of building and delivering software, especially at large sites that have many interrelated services and teams. Organizations with a DevOps practice promote integration among engineering teams and may draw little or no distinction between development and operations. Experts who work in this area seek out inefficient processes and replace them with small shell scripts or large and unwieldy Chef repositories.
+
+- **Site Reliability Engineering (SRE)**: Site reliability engineers value uptime and correctness above all else. Monitoring networks, deploying production software, taking pager duty, planning future expansion, and debugging outages all lie within the realm of these availability crusaders. Single points of failure are site reliability engineers’ nemeses.
+
+- **Architects**: Systems architects have deep expertise in more than one area. They use their experience to design distributed systems. Their job descriptions may include defining security zones and segmentation, eliminating single points of failure, planning for future growth, ensuring connectivity among multiple networks and third parties, and other site-wide decision making. Good architects are technically proficient and generally prefer to implement and test their own designs.
