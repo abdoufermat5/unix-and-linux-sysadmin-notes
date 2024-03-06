@@ -34,10 +34,10 @@ while IFS= read -r line; do
         chapter_titles+=("${BASH_REMATCH[2]}")
         chapter_directories+=("${BASH_REMATCH[3]}")
     fi
-done < "$readme_file"
+done <"$readme_file"
 
 # Display the list of chapters and associated directories in order
-for ((i=0; i<${#chapter_numbers[@]}; i++)); do
+for ((i = 0; i < ${#chapter_numbers[@]}; i++)); do
     chapter_number="${chapter_numbers[$i]}"
     chapter_title="${chapter_titles[$i]}"
     chapter_link="${chapter_directories[$i]}"
@@ -59,7 +59,7 @@ fi
 echo -e "\n\n"
 
 # Check if the chapter is already read (i.e., the directory exists)
-chapter_directory="${chapter_directories[$chapter_number-1]}"
+chapter_directory="${chapter_directories[$chapter_number - 1]}"
 if [ -d "$chapter_directory" ]; then
     echo "Chapter $chapter_number is already read or reading\n"
     exit 1
@@ -67,7 +67,8 @@ fi
 
 echo -e "Chapter $chapter_number is not read yet\n\n Creating the folder for the concerned chapter and create readme.md file in it.\n...."
 # Create the folder for the concerned chapter and create readme.md file in it.
-mkdir -p "$(dirname "$chapter_directory")/data" 
-echo -e "# Chapter $chapter_number: ${chapter_titles[$chapter_number-1]}\n\n" > "$(dirname "$chapter_directory")/readme.md"
+mkdir -p "$(dirname "$chapter_directory")/data"
+mkdir -p "$(dirname "$chapter_directory")/training"
+echo -e "# Chapter $chapter_number: ${chapter_titles[$chapter_number - 1]}\n\n" >"$(dirname "$chapter_directory")/readme.md"
 
-echo -e "\n\nWe are set!!\n\nGood luck with Chapter $chapter_number!!\n" 
+echo -e "\n\nWe are set!!\n\nGood luck with Chapter $chapter_number!!\n"
