@@ -237,7 +237,7 @@ $InputTCPServerKeepAlive on
 
 To put these options into effect, you could add the lines to a new file to be included in the main configuration such as **/etc/rsyslog.d/10-udp-tcp.conf**. Then restart the rsyslogd daemon.
 
-![rsyslog-conf](./rsyslog-conf.png)
+![rsyslog-conf](./data/rsyslog-conf.png)
 
 **RainerScript**:
 
