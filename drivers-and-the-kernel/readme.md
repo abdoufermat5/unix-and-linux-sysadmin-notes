@@ -137,3 +137,111 @@ Bus 004 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
 Bus 003 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
 ```
 
+## Linux Kernel configuration
+
+3 methods to configure a Linux kernel:
+
+- Modifying tunalble(dynamic) kernel configuration parameters
+- Building a kernel from scratch (by compiling the kernel source code)
+- Loading new drivers and modules into a running kernel
+
+### Tunable Linux kernel parameters
+
+The Linux kernel has many tunable parameters that can be set at runtime. These parameters are stored in the `/proc/sys` directory. The `sysctl` command is used to read and modify these parameters.
+
+For example, to display the value of the kernel parameter `vm.swappiness`, use the following command:
+
+```bash
+$ sysctl vm.swappiness # (same as /proc/sys/vm/swappiness)
+vm.swappiness = 60
+```
+
+### Building a kernel from scratch
+
+The Linux kernel is a monolithic kernel, which means that it is a single, large program that contains all the essential components of the operating system. The kernel is built from source code, which is available from the kernel.org website.
+
+The kernel source code is organized into directories, each of which contains the source code for a different part of the kernel. The source code is written in the C programming language and is compiled into a binary executable that can be loaded into memory and executed by the computer.
+
+**Configuring kernel options:**
+
+The kernel source code contains a file called `.config` at the root of the source tree. This file contains the configuration options that are used to build the kernel. The configuration options are stored in a format that is similar to the output of the `make menuconfig` command.
+
+You can use the decoding guide in `kernel_src_dir/Documentation/Configure.help` to find out what the various options mean.
+
+It's usually inadvisable to edit the `.config` file directly. Instead, use one of the following methods to configure the kernel:
+
+- `make menuconfig` : A text-based menu-driven configuration tool
+- `make xconfig` : A graphical configuration tool if you are running KDE
+- `make gconfig` : A graphical configuration tool if you are running GNOME
+- `make oldconfig` : Update an existing `.config` file with new options
+
+**Building the kernel binary:**
+
+Here's an outline of the entire process to get a finished kernel:
+
+1. Change directory to the kernel source directory (e.g., `cd /usr/src/linux-5.10.25`)
+2. Run `make xconfig`, `make gconfig`, or `make menuconfig` to configure the kernel
+3. Run `make clean`. (optional)
+4. Run `make`
+5. Run `make modules_install`
+6. Run `make install`
+
+### Adding a linux device driver
+
+On Linux systems, device drivers are typically distributed in one of three forms:
+
+- A patch against a specific kernel version
+- A loadable kernel module
+- An installation script or package that installs the driver
+
+## Loadable Kernel Modules (LKM)
+
+A loadable kernel module (LKM) is a piece of code that can be loaded into the Linux kernel at runtime. LKMs are used to add new functionality to the kernel without having to recompile the entire kernel. LKMs are typically used to add support for new hardware devices or to add new features to the kernel.
+
+Under Linux, you can inspect the currently loaded kernel modules with the `lsmod` command:
+
+```bash
+$ lsmod
+Module                  Size  Used by
+nls_utf8               16384  1
+isofs                  49152  1
+uas                    24576  0
+usb_storage            77824  1 uas
+```
+
+As an example of manually loading a kernel module, here’s how we would insert a module that implements sound output to usb devices:
+
+```bash
+$ sudo modprobe snd-usb-audio
+```
+
+`modprobe` is a semi-automatic wrapper around a more primitive command, `insmod`. `modprobe` understands dependencies, options, and installation and removal procedures.
+
+## Booting
+
+Here's a brief overview of the boot process on a Linux system:
+
+1. The BIOS or UEFI firmware initializes the hardware and loads the boot loader from the boot device (usually a hard disk).
+2. The boot loader loads the kernel image into memory and starts the kernel.
+3. The kernel initializes the hardware, mounts the root filesystem, and starts the init process.
+4. The init process starts other system processes and services.
+5. The system is now fully booted and ready for use.
+
+The boot loader is responsible for loading the kernel image into memory and starting the kernel. The most common boot loaders on Linux systems are GRUB and LILO.
+
+## Booting alternate kernels in the cloud
+
+Cloud instances boot differently from traditional hardware. Most cloud providers sidestep GRUB and use either a modified open source boot loader or some kind of scheme that avoids the use of a boot loader altogether. On AWS, the base AMI(amazon machine image) uses a boot loader called PV-GRUB, which is a patched version of GRUB that lets you specify the kernel in the **menu.lst** file.
+
+## Kernel errors
+
+Linux has four varieties of kernel failure: soft lockups, hard lockups, kernel panics, and oopses.
+
+- **Soft lockups** are caused by a kernel process that has been running for too long without yielding the CPU to other processes. Soft lockups are not fatal and can be recovered from. During a soft lockup, the kernel is the only thing running, but it is still servicing interrupts such as those from network interfaces and keyboards.
+- **Hard lockups** is the same as a soft lockup, but with the additional complication that most processor interrupts go unserviced. 
+
+A soft or hard lockup is almost always the result of a hardware failure, the most common culprit being bad memory.
+
+- **oops**: The Linux “oops” system is a generalization of the traditional UNIX “panic after any anomaly” approach to kernel integrity. 
+- **Panics**: A kernel panic is a fatal error that occurs when the kernel detects an unrecoverable error. When a kernel panic occurs, the kernel halts the system and displays a message that describes the error. The system must be rebooted to recover from a kernel panic.
+
