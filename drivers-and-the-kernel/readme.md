@@ -1,6 +1,6 @@
 # Chapter 11: Drivers and the Kernel
 
-![drivers-kernel](https://www.researchgate.net/publication/301370659/figure/fig1/AS:356133665161219@1461920290608/Device-drivers-in-the-Linux-kernel.png)
+![kernel-dev-drivers](./data/kernel-dev-drivers.png)
 
 The kernel is the central government of a UNIX or Linux system. It’s responsible for enforcing rules, sharing resources, and providing the core services that user processes rely on.
 
