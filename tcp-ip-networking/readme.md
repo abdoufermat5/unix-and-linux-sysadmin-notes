@@ -307,3 +307,11 @@ Source routing is a technique that allows the sender of a packet to specify the 
 A smurf attack is a type of denial-of-service attack that floods a target system with ICMP Echo Request packets. The attack is amplified by sending the packets to a broadcast address, causing all hosts on the network to respond to the target system.
 
 To prevent smurf attacks, you can disable ICMP Echo Requests on your system (with `sysctl -w net.ipv4.icmp_echo_ignore_all=1`).
+
+### IP spoofing
+
+IP spoofing is a technique used to gain unauthorized access to a system by impersonating a trusted host. It happens when an attacker sends packets with a forged source IP address to a target system. To prevent IP spoofing, you can enable IP source address validation on your system (with `sysctl -w net.ipv4.conf.all.rp_filter=1`).
+
+You should also protect yourself against inbound spoofed packets by using what is called a "unicast reverse path forwarding" filter. This filter checks the source address of incoming packets to make sure they are reachable through the interface on which they arrived. If the source address is not reachable through the interface, the packet is dropped.
+
+### 
