@@ -201,7 +201,109 @@ We can use **ip**(Linux) or **route**(FreeBSD) command to add or delete routes.
 
 ```bash
 # Linux
-ip route add 132.245.234.64/26 via 132.234.212.6 dev eth1
+ip route add network/prefix via gateway_ip dev interface
 
 # FreeBSD
-route add -net 132.245.234.64/26 gw 132.234.212.6 eth1
+route add -net network/prefix gw gateway_ip interface
+```
+
+For more complicated network topologies, dynamic routing is required. Dynamic routing is implemented by a daemon process that maintains and modifies the routing table.
+
+### ICMP Redirects
+
+ICMP Redirects are messages sent by routers to inform hosts that a better route is available for a particular destination. When a host receives an ICMP Redirect message, it updates its routing table to use the new route.
+
+*A basic example:*
+
+Imagine a small office network with three devices:
+
+- Device A (192.168.1.10): A computer trying to access a printer.
+- Router (192.168.1.1): The network router responsible for routing traffic.
+- Printer (192.168.1.20): The network printer Device A wants to connect to.
+
+Device A sends a packet to the printer, but the router intercepts the packet and sends an ICMP Redirect message to Device A. The ICMP Redirect message tells Device A to send packets directly to the printer instead of through the router.
+
+## IPv4 ARP and IPv6 ND
+
+Although IP addresses are hardware-independent, hardware addresses must still be used to actually transport data across a network’s link layer. (An exception is for point-to-point links, where the identity of the destination is sometimes implicit.) IPv4 and IPv6 use separate but eerily similar protocols to discover the hardware address associated with a particular IP address.
+
+IPv4 uses ARP (Address Resolution Protocol), defined in RFC826. IPv6 uses ND (Neighbor Discovery), defined in RFC4861. These protocols can be used on any kind of network that support broadcast or multicast.
+
+On Linux, the **ip neigh** command can be used to view the ARP and ND tables.
+
+## DHCP: Dynamic Host Configuration Protocol
+
+When you plug a device or computer into a network, it usually obtains an IP address for itself on the local network, sets up an appropriate default route, and connects itself to a local DNS server.
+
+The Dynamic Host Configuration Protocol (DHCP) provides a framework for passing configuration information to hosts on a TCPIP network. DHCP is based on the Bootstrap Protocol (BOOTP), adding the capability of automatic allocation of reusable network addresses and additional configuration options.
+
+ISC, the Internet Systems Consortium, maintains a nice open source reference implementation of DHCP.
+
+### DHCP behavior
+
+A DHCP client begins its interaction with a DHCP server by broadcasting a “Help! Who am I?” message. IPv4 clients initiate conversations with the DHCP server by using the generic all-1s broadcast address (255.255.255.255). The clients don’t yet know their subnet masks and therefore can’t use the subnet broadcast address. IPv6 uses multicast addressing instead of broadcasting.
+
+If the DHCP server is on the local network, it supply an IP address and other net params else, servers on different subnets can receive the initial broadcast message.
+
+### ISC's DHCP software
+
+ISC's server daemon is called `dhcpd` and the client daemon is called `dhclient`. The server configuration file is `/etc/dhcpd.conf` and the client configuration file is `/etc/dhclient.conf` (or `/etc/dhcp/dhclient.conf`).
+
+To set up the `dhcpd.conf` file, you need the following information:
+
+- The subnets for which **dhcpd** should manage IP addresses, and the range of addresses to dole out.
+- A list of static IP addresses to assign to specific hosts (MAC addresses).
+- The initial and maximum lease times for IP addresses.
+- Any other options you want to pass to clients, such as the address of the DNS server.
+
+**Make sure *dhcpd* is started at boot time (with `systemctl enable dhcpd`) and is running (with `systemctl status dhcpd`).**
+
+Example of a simple `dhcpd.conf` file:
+
+```bash
+# global options
+
+option domain-name "synack.net";
+option domain-name-servers gw.synack.net;
+option subnet-mask 255.255.255.0;
+default-lease-time 600;
+max-lease-time 7200;
+
+# subnet definitions
+
+subnet 192.168.1.0 netmask 255.255.255.0 {
+    range 192.168.1.51 192.168.1.60
+    option broadcast-address 192.168.1.255
+    option routers gw.synack.net
+}
+
+subnet 209.180.251.0 netmask 255.255.255.0 {
+}
+
+# host definitions
+
+host gandalf {
+    hardware ethernet 00:00:07:12:f3:54;
+    fixed-address gandalf.synack.net;
+}
+```
+
+## Security issues
+
+### IP forwarding
+
+A UNIX or Linux system that has IP forwarding enabled can act as a router. That is, it can accept third party packets on one NI, match them to a gateway or destination host on another interface, and retransmit the packets. Unless your system has multiple NI and is actually supposed to function as a router, it's best to turn this feature off (with `sysctl -w net.ipv4.ip_forward=0`).
+
+### ICMP redirects
+
+ICMP Redirects can be used to trick hosts into sending packets through a malicious router. To prevent this, you can disable ICMP Redirects on your system (with `sysctl -w net.ipv4.conf.all.accept_redirects=0`).
+
+### Source routing
+
+Source routing is a technique that allows the sender of a packet to specify the route it should take through the network. This can be used to bypass security measures and launch attacks. To prevent source routing, you can disable it on your system (with `sysctl -w net.ipv4.conf.all.accept_source_route=0`).
+
+### smurf attacks
+
+A smurf attack is a type of denial-of-service attack that floods a target system with ICMP Echo Request packets. The attack is amplified by sending the packets to a broadcast address, causing all hosts on the network to respond to the target system.
+
+To prevent smurf attacks, you can disable ICMP Echo Requests on your system (with `sysctl -w net.ipv4.icmp_echo_ignore_all=1`).
