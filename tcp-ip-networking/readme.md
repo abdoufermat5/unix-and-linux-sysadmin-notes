@@ -314,4 +314,14 @@ IP spoofing is a technique used to gain unauthorized access to a system by imper
 
 You should also protect yourself against inbound spoofed packets by using what is called a "unicast reverse path forwarding" filter. This filter checks the source address of incoming packets to make sure they are reachable through the interface on which they arrived. If the source address is not reachable through the interface, the packet is dropped.
 
-### 
+### VPN
+
+A Virtual Private Network (VPN) is a secure tunnel between two or more devices. VPNs are used to protect private web traffic from snooping, interference, and censorship.
+
+A VPN works by encrypting your data and sending it through a secure connection to a remote server. This server then sends your data to the intended recipient, masking your IP address and location. Some VPN systems use IPsec, while others use SSL/TLS for encryption.
+
+## Basic network configuration
+
+Adding a new machine to a LAN involves setting up the following:
+
+1. Assigning an IP address and a hostname
