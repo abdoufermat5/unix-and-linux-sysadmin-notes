@@ -6,7 +6,7 @@ TCP/IP (Transmission Control Protocol/Internet Protocol) is the networking syste
 
 ## TCP/IP and its relationship to the Internet
 
-The progenitor of the modern Internet was a research network called ARPANET, which was funded by the U.S. Department of Defense’s Advanced Research Projects Agency (ARPA). Today's Internet is a collection of private networks owned by Internet Service Providers (ISPs) that interconnect at many so-called peering points. 
+The progenitor of the modern Internet was a research network called ARPANET, which was funded by the U.S. Department of Defense’s Advanced Research Projects Agency (ARPA). Today's Internet is a collection of private networks owned by Internet Service Providers (ISPs) that interconnect at many so-called peering points.
 
 ### WHo runs the Internet?
 
@@ -52,7 +52,7 @@ STDs document Internet protocols that have completed the IETF’s review and tes
 
 The number of unique IPv4 addresses is not enough to accommodate all the devices that need to connect to the Internet. To solve this problem, the Internet Engineering Task Force (IETF) developed IPv6, which uses 128-bit addresses.
 
-Your choice is not between IPv4 and IPv6; it’s between supporting IPv4 alone and supporting both IPv4 and IPv6. 
+Your choice is not between IPv4 and IPv6; it’s between supporting IPv4 alone and supporting both IPv4 and IPv6.
 
 Yes, it’s an elegant and well-designed protocol that improves on IPv4. And yes, it is in some ways easier to administer than IPv4 and requires fewer hacks (e.g., less need for NAT). But in the end, it’s just a cleaned-up version of IPv4 with a larger address space. The fact that you must manage it alongside IPv4 eliminates any potential efficiency gain. IPv6’s raison d’être remains the millenial fear of IPv4 address exhaustion, and to date, and to date, the effects of that exhaustion just haven't been painful enough to justify the cost of switching to IPv6.
 
@@ -107,9 +107,9 @@ A MAC address is a 48-bit number that is usually represented as six pairs of hex
 
 ### IP addressing
 
-At the next level up from the hardware, Internet addressing (more commonly known as IP addressing) is used.  IP addresses are hardware independent. They are assigned to network interfaces by software, and they can be reassigned to different hardware interfaces as needed.
+At the next level up from the hardware, Internet addressing (more commonly known as IP addressing) is used. IP addresses are hardware independent. They are assigned to network interfaces by software, and they can be reassigned to different hardware interfaces as needed.
 
-The mapping from IP addresses to hardware addresses is done by the Address Resolution Protocol (ARP). 
+The mapping from IP addresses to hardware addresses is done by the Address Resolution Protocol (ARP).
 
 ### Hostname "addressing"
 
@@ -213,7 +213,7 @@ For more complicated network topologies, dynamic routing is required. Dynamic ro
 
 ICMP Redirects are messages sent by routers to inform hosts that a better route is available for a particular destination. When a host receives an ICMP Redirect message, it updates its routing table to use the new route.
 
-*A basic example:*
+_A basic example:_
 
 Imagine a small office network with three devices:
 
@@ -256,7 +256,7 @@ To set up the `dhcpd.conf` file, you need the following information:
 - The initial and maximum lease times for IP addresses.
 - Any other options you want to pass to clients, such as the address of the DNS server.
 
-**Make sure *dhcpd* is started at boot time (with `systemctl enable dhcpd`) and is running (with `systemctl status dhcpd`).**
+**Make sure _dhcpd_ is started at boot time (with `systemctl enable dhcpd`) and is running (with `systemctl status dhcpd`).**
 
 Example of a simple `dhcpd.conf` file:
 
@@ -372,33 +372,173 @@ The `/etc/resolv.conf` file contains the IP addresses of the name servers that t
 Several tools are available for troubleshooting network problems:
 
 - `ping` is used to test the reachability of a host on an IP network.
-Example: `ping google.com` which sends ICMP echo requests to google.com. If google.com is reachable, it will respond with ICMP echo replies.
+  Example: `ping google.com` which sends ICMP echo requests to google.com. If google.com is reachable, it will respond with ICMP echo replies.
 
 - `traceroute` is used to trace the route that packets take from one host to another.
-Example: `traceroute google.com` which sends packets to google.com with increasing TTL values. Each router along the path decrements the TTL value and sends an ICMP Time Exceeded message when the TTL reaches zero.
+  Example: `traceroute google.com` which sends packets to google.com with increasing TTL values. Each router along the path decrements the TTL value and sends an ICMP Time Exceeded message when the TTL reaches zero.
 
 - `tcpdump` is used to capture and analyze network traffic.
-Example: `tcpdump -i eth0` which captures packets on the eth0 interface.
+  Example: `tcpdump -i eth0` which captures packets on the eth0 interface.
 
 - `netstat` is used to display network connections, routing tables, and interface statistics.
-Example: `netstat -r` which displays the routing table.
+  Example: `netstat -r` which displays the routing table.
 
 - `nmap` is used to scan ports and discover hosts on a network.
-Example: `nmap -sP www.ept.sn` which scans the www.ept.sn domain for hosts.
+  Example: `nmap -sP www.ept.sn` which scans the www.ept.sn domain for hosts.
 
 Ask yourself questions like these as you work up or down the stack:
 
-- *Do you have physical connectivity and a link light?*
-- *Is your interface configured properly?*
-- *Do your ARP tables show other hosts?*
-- *Is there a firewall on your local machine?*
-- *Is there a firewall anywhere between you and the destination?*
-- *If firewalls are involved, do they pass ICMP ping packets and responses?*
-- *Can you ping the localhost address (127.0.0.1)?*
-- *Can you ping other local hosts by IP address?*
-- *Is DNS working properly?*
-- *Can you ping other local hosts by hostname?*
-- *Can you ping hosts on another network?*
-- *Do high-level services such as web and SSH servers work?*
-- *Did you really check the firewalls?*
+- _Do you have physical connectivity and a link light?_
+- _Is your interface configured properly?_
+- _Do your ARP tables show other hosts?_
+- _Is there a firewall on your local machine?_
+- _Is there a firewall anywhere between you and the destination?_
+- _If firewalls are involved, do they pass ICMP ping packets and responses?_
+- _Can you ping the localhost address (127.0.0.1)?_
+- _Can you ping other local hosts by IP address?_
+- _Is DNS working properly?_
+- _Can you ping other local hosts by hostname?_
+- _Can you ping hosts on another network?_
+- _Do high-level services such as web and SSH servers work?_
+- _Did you really check the firewalls?_
+
+**ping: check to see if a host is up**
+
+Most of the time `ping` is enough tp check the status of a host or segment of a network unless there's a firewall in the way (where ICMP echo requests are blocked).
+
+Most versions of `ping` run in an infinite loop unless you supply a packet count argument. You can also set the packet size, the time between packets, and the time to wait for a response.
+
+Example: `ping -c 4 -s 1000 -i 0.2 -W 1 google.com`
+
+The `-c` option sets the number of packets to send, the `-s` option sets the packet size, the `-i` option sets the interval between packets, and the `-W` option sets the timeout for a response (in seconds).
+
+**traceroute: trace IP packets**
+
+`traceroute` is a tool that traces the route that packets take from one host to another. It sends packets with increasing TTL values and displays the IP addresses of the routers along the path.
+
+![traceroute](https://ars.els-cdn.com/content/image/3-s2.0-B9780128024379000059-f05-10-9780128024379.jpg)
+
+Since traceroute sends three packets for each value of the TTL field, you may sometimes observe an interesting artifact. If an intervening gateway multiplexes traffic across several routes, the packets might be returned by differen hosts; in this case, traceroue simply prints them all.
+
+If you see a series of asterisks, it means that the router is not responding to ICMP Time Exceeded messages. Some firewalls are configured to block these ICMP "time exceeded" messages entirely. If such a firewall is in the path, you won't get information about any gateways beyond it. However, you can still determine the total number of hops to the information because the probe packets will eventually reach the destination.
+
+You can use **mtr**, a **top**-like interface to traceroute, to get a continuous view of the route to a host.
+
+**tcpdump: capture and analyze packets**
+
+`tcpdump` yet another amazing network tool by Van Jacobson, runs on most systems. It captures packets on a network interface and displays them in real time. You can use it to troubleshoot network problems, analyze network traffic, and monitor network activity.
+
+Example: `tcpdump -i eth0 -n -c 10`
+
+The `-i` option sets the interface to capture packets on, the `-n` option disables name resolution, and the `-c` option sets the number of packets to capture.
+
+## Network Monitoring
+
+### SmokePing: gather ping statistics over time
+
+SmokePing sends several ping packets to a target host at regular intervals. It shows the history of each monitored link through a web interface and can send alerts when a link goes down (check it here: [https://oss.oetiker.ch/smokeping/](https://oss.oetiker.ch/smokeping/)).
+
+### iPerf: track network performance
+
+At the most basic level, iPerf opens a conection (TCP or UDP) between two hosts, passes data between them, and records how long the process took.
+
+Once you have iPerf installed on two hosts, you can run the server on one host and the client on the other. The server listens for connections, and the client connects to the server and sends data.
+
+Example: `iperf -s` on the server and `iperf -c server_ip` on the client.
+
+## Firewalls and NAT
+
+It is not recommended to rely on Linux, UNIX, or Windows systems as firewalls because of the insecurity inherent in running a full-fledged, general-purpose OS. However, all operating systems have built-in firewall capabilities that can be used to protect the system from attack.
+
+Whe it comes to machine-specific firewalls, two main schools of thought exist:
+
+- The first school considers them superfluous. According to this view, firewalls belong on gateway routers, where they can protect the entire network through the application of one consistent set of rules.
+- The second school considers machine-specific firewalls an important component of a "defense in depth" security plan. Although gateway firewalls are theoretically sufficient to control network traffic, they can be compromised, routed around, or administratively misconfigured. Therefore, it's prudent to implement the same network traffic restrictions through multiple, redundant firewall systems.
+
+### iptables
+
+`iptables` is a user-space utility program that allows a system administrator to configure the IP packet filter rules of the Linux kernel firewall, implemented as different Netfilter modules. The filters are organized in different tables, which contain chains of rules for how to treat network traffic packets.
+
+iptables applies ordered “chains” of rules to network packets. Sets of chains makes up "tables" and are used for handling specific kinds of traffic. 
+
+For example the default table is the `filter` table, which is used to filter packets. Chains of rules in this table are used for filtering packets. It contains three built-in chains: `INPUT`, `OUTPUT`, and `FORWARD`.
+
+In addition to the `filter` table, there are two other tables: the `nat` table, which is used for network address translation, and the `mangle` table, which is used for packet alteration.
+
+(see [iptables](./training/iptables.md) for examples)
+
+**iptables** *firewall* *setup*
+
+Before you can use iptables as a firewall, you must enable a IP forwarding and make sure that various iptables modules have been loaded into the kernel.
+
+A linux firewall is usually implemented as a series of iptables commands contained in an rc startup script. Individual iptables commands usually take one of the following forms:
+
+- `iptables -F chain_name` 
+- `iptables -P chain_name target`
+- `iptables -A chain_name -i interface -j target`
+
+The `-F` option flushes the rules from a chain, the `-P` option sets the default target for a chain, and the `-A` option appends a rule to a chain.
+
+![flags](./data/iptables-flags.png)
+
+[A COMPLETE EXAMPLE IS WELL EXLAINED IN THE BOOK]
+
+Say we have two interfaces, eth0 (IP: 10.1.1.1, subnet mask: 255.255.255.0) which goes to internal network and eth1 (128.138.101.4, subnet mask: 255.255.255.0) which goes to the Internet. We are using stateless packet filtering to protect the web server (IP: 10.1.1.2) on the internal network, which is the standard way to protect a web server.
+
+Our first set of rules initializes the filter table. First, all chains are flushed, then the INPUT and FORWARD chains are set to DROP.
+    
+```bash
+iptables -F
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+```
+
+Next, we allows all connections through the firewall that originate whithin the trusted net (eth0). The next three rules in the FORWARD chain allow connections through  the firewall to network services on 10.1.1.2 (SSH, HTTP, and HTTPS).
+
+```bash
+iptables -A FORWARD -i eth0 -p ANY -j ACCEPT
+iptables -A FORWARD -i eth1 -d 10.1.1.2 -p tcp --dport 22 -j ACCEPT
+iptables -A FORWARD -i eth1 -d 10.1.1.2 -p tcp --dport 80 -j ACCEPT
+iptables -A FORWARD -i eth1 -d 10.1.1.2 -p tcp --dport 443 -j ACCEPT
+```
+
+The only TCP traffic we allow to our firewall host (10.1.1.1) is SSH, which is useful for remote administration. The second rule allow loopback traffic, which stays local to the host (so that the host can talk to itself via a ping or a web browser). So the third rule allows ICMP_ECHO_REQUEST packets from internal IP addresses.
+
+```bash
+iptables -A INPUT -i eth0 -d 10.1.1.1 -p tcp --dport 22 -j ACCEPT
+iptables -A INPUT -i lo -d 127.0.0.1 -p ANY -j ACCEPT
+iptables -A INPUT -i eth0 -d 10.1.1.1 -p icmp --icmp-type 8 -j ACCEPT
+```
+
+For any IP host to work properly on the Internet, certain types of ICMP packets must be allowed through the firewall. The following eight rules allow a minimal set of ICMP packets to the firewall host, as well as to the network behind it.
+
+```bash
+iptables -A INPUT -p icmp --icmp-type 0 -j ACCEPT
+iptables -A INPUT -p icmp --icmp-type 3 -j ACCEPT
+iptables -A INPUT -p icmp --icmp-type 5 -j ACCEPT
+iptables -A INPUT -p icmp --icmp-type 11 -j ACCEPT
+iptables -A FORWARD -d 10.1.1.2 -p icmp --icmp-type 0 -j ACCEPT
+iptables -A FORWARD -d 10.1.1.2 -p icmp --icmp-type 3 -j ACCEPT
+iptables -A FORWARD -d 10.1.1.2 -p icmp --icmp-type 5 -j ACCEPT
+iptables -A FORWARD -d 10.1.1.2 -p icmp --icmp-type 11 -j ACCEPT
+```
+
+We next add rules to the PREROUTING chain in the nat table. Although the nat table is not intended for packet filtering, its PREROUTING chain is particularly useful for antispoofing filtering. If we put DROP entries in the PREROUTING chain, they need not be present in the INPUT and FORWARD chains, since the PREROUTING chain is applied to all packets that enter the firewall host. It’s cleaner to put the entries in a single place rather than to duplicate them.
+
+```bash
+iptables -t nat -A PREROUTING -i eth1 -s 10.0.0.0/8 -j DROP
+iptables -t nat -A PREROUTING -i eth1 -s 172.16.0.0/12 -j DROP
+iptables -t nat -A PREROUTING -i eth1 -s 192.168.0.0/16 -j DROP
+iptables -t nat -A PREROUTING -i eth1 -s 127.0.0.0/8 -j DROP
+iptables -t nat -A PREROUTING -i eth1 -s 224.0.0.0/4 -j DROP
+```
+
+We end noth INPUT and FORWARD chains with a rule that logs and drops any packets that have not been accepted by previous rules. This is a good practice because it allows you to see what kind of traffic is being dropped.
+
+```bash
+iptables -A INPUT -i eth1 -j LOG
+iptables -A FORWARD -i eth1 -j LOG
+```
+
+### NAT
 
