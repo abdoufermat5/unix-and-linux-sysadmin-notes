@@ -64,7 +64,7 @@ When a packet is sent over a network, it is encapsulated in a series of headers.
 
 For example, a UDP packet is encapsulated in an IP header, which is encapsulated in an Ethernet header. When the packet reaches its destination, the receiving device reads the Ethernet header first, then the IP header, and finally the UDP header.
 
-![udp-packet](https://www.researchgate.net/publication/282095781/figure/fig1/AS:614326524207105@1523478265436/UDP-packet-format-for-the-real-time-transmission-of-neuron-spikes-or-similar-event-based.png)
+![udp-packet](https://image3.slideserve.com/5809717/figure-2-12-tcp-and-udp-headers-l.jpg)
 
 ### Ethernet framing
 
