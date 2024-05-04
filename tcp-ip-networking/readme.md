@@ -542,3 +542,37 @@ iptables -A FORWARD -i eth1 -j LOG
 
 ### NAT
 
+Network Address Translation (NAT) is a method used by routers to modify network address information in the IP header of packets while they are in transit across a traffic routing device. The purpose of NAT is to conserve IP addresses and to allow multiple devices on a network to share a single public IP address.
+
+The iptables command to route packets using NAT is of the form:
+
+```bash
+iptables -t nat -A POSTROUTING -o eth0 -j SNAT --to 128.138.101.4
+```
+
+where `-t nat` specifies the table, `-A POSTROUTING` specifies the chain, `-o eth0` specifies the output interface, `-j SNAT` specifies the target, and `--to 128.138.101.4` specifies the new source IP address and is the address of the router that is connected to the Internet.
+
+## Cloud Networking
+
+### AWS's Virtual Private Cloud (VPC)
+
+VPC, the software-defined network technology for Amazon Web Services, creates private networks within the broader AWS network. 
+
+The central features of VPC includes:
+
+- An IPv4 address range selected from RFC1918 private address space, expressed in CIDR notation (e.g., 10.110.0.0/16 for the addresses 10.110.0.0-10.110.255.255). VPC also supports IPv6.
+- Subnets to segment the VPC address range into smaller blocks.
+- Routing tables to determine where to send traffic.
+- Security groups that act as firewalls for EC2 instances.
+- Network Access Control Lists (NACLs) to isolate subnets rfom each other.
+
+VPC routing is simpler than routing for a traditional hardware network because the cloud does not simulate physical topology. Every accessible destination is reachable in one logical hop.
+
+**Example of VPC Architecture**
+
+![vpc-architecture](https://miro.medium.com/max/1165/1*zh9tEBSj681gL7ZTwQAn2A.png)
+
+- Create VPC in N-Virginia with CIDR 10.100.0.0/16 and then deploy two subnets, one public (10.100.0.0/24) and private subnet (10.100.1.0/24). Additionally, we must need Internet Gateway (IGW), Routing Tables with apt routes, Security Group with inbound access to SSH/ICMP requests and lastly 2 EC2 instances, each in public and private instance.
+- Create VPC in Singapore region with CIDR 10.200.0.0/16 and create one private subnet with 10.200.0.0/24. Within this region we need, Routing Table, an EC2 Instance (in private subnet) with security group with restrictive inbound access to SSH/ICMP.
+- Lastly, create VPC Peering between both the VPC’s and validate if we able to talk to EC2 instance residing in ap-southeast-1 region from EC2 instance sitting in us-east-1 region.
+
