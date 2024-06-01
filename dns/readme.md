@@ -75,11 +75,21 @@ To allow the same DNS system to manage both names (which have the most significa
 
 Two types of TLDs exists: country code domains (ccTLDs) and generic domains (gTLDs). 
 
-> **_NOTE:_** ICANN, the Internet Corporation for Assigned Names and Numbers, accredits various agencies to
-> be part of its shared registry project for registering names in the gTLDs such
-> as com, net, and org. To register for a ccTLD name, check the IANA (Internet Assigned Numbers
-> Authority) web page [iana.org/cctld](iana.org/cctld) to find the registry in charge of a
-> particular country’s registration.
+<div style="font-family: Arial, sans-serif; background-color: #98F5F9; border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <p style="color: #555;">
+        <strong>ICANN</strong> (Internet Corporation for Assigned Names and Numbers) accredits various agencies to be part of its shared registry project for registering names in the <strong>gTLDs</strong> (generic Top-Level Domains) such as <code>.com</code>, <code>.net</code>, and <code>.org</code>.
+    </p>
+    <p style="color: #555;">
+        To register for a <strong>ccTLD</strong> (country code Top-Level Domain) name, check the <strong>IANA</strong> (Internet Assigned Numbers Authority) web page:
+    </p>
+    <p style="text-align: center;">
+        <a href="https://iana.org/cctld" style="color: #1a73e8; text-decoration: none; font-weight: bold;">iana.org/cctld</a>
+    </p>
+    <p style="color: #555;">
+        This page will help you find the registry in charge of a particular country’s domain name registration.
+    </p>
+</div>
+
 
 ### Registering a domain name
 
@@ -143,3 +153,6 @@ In the reverse file called `63.173.189.rev`:
 1       IN      PTR   nubark.atrust.com.
 ```
 
+<div style="font-family: Arial, sans-serif; background-color: #98F5F9; border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+Resource records are the <span><a href="https://en.wikipedia.org/wiki/Lingua_franca" style="color: #1a73e8; text-decoration: none; font-weight: bold;">lingua franca</a></span> of DNS and are independent of the configuration files that control the operation of any given DNS server implementation. They are also the pieces of data that flow around the DNS system and become cached at various locations.
+</div>
