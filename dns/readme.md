@@ -278,3 +278,73 @@ The refresh field specifies how often a slave server should check with the maste
 
 ### The NS record
 
+The NS (Name Server) record specifies the authoritative name servers for the zone and delegates subdomains to other organizations. 
+
+The format of the NS record is:
+
+```text
+zone    [ttl]   [IN]    NS      hostname
+```
+
+for example:
+
+```text
+                      NS   ns1.atrust.com.
+                      NS   ns2.atrust.com.
+booklab               NS   ubuntu.booklab.atrust.com.
+                      NS   ns1.atrust.com.
+```
+
+The first two lines delegate the zone `atrust.com` to the name servers `ns1.atrust.com` and `ns2.atrust.com`. The third line delegates the subdomain `booklab.atrust.com` to the name servers `ubuntu.booklab.atrust.com` and `ns1.atrust.com`. 
+
+### The A record
+
+The A (Address) record maps a hostname to an IP address. The format of the A record is:
+
+```text
+hostname    [ttl]   [IN]    A       ip-address
+```
+
+for example:
+
+```text
+ns1                  IN      A      63.173.189.1
+```
+
+In this example, the name is not dot-terminated, so the name server adds the default domain name to it to form the fully qualified domain name `ns1.atrust.com.`.
+
+### AAAA records
+
+The AAAA record maps a hostname to an IPv6 address. The format of the AAAA record is:
+
+### PTR records
+
+The PTR (Pointer) record maps an IP address to a hostname. The format of the PTR record is:
+
+```text
+ip-address    [ttl]   [IN]    PTR     hostname
+```
+
+For example the PTR record in the 189.173.63.in-addr.arpa zone file that corresponds to the A record for ns1.atrust.com is:
+
+```text
+1             IN      PTR     ns1.atrust.com.
+```
+
+### MX records
+
+The MX (Mail Exchange) system is used to route email more efficiently. 
+
+The format of the MX record is:
+
+```text
+name    [ttl]   [IN]    MX      preference    host ...
+```
+
+For example:
+
+```text
+somehost       IN      MX      10    mailserver.atrust.com.
+               IN      MX      20    mail-relay3.atrust.com.
+```
+
