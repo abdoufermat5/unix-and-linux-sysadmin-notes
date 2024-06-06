@@ -348,3 +348,240 @@ somehost       IN      MX      10    mailserver.atrust.com.
                IN      MX      20    mail-relay3.atrust.com.
 ```
 
+MX records are useful in many situations:
+
+- When you have a central mail hub or service provider for incoming mail
+- When you want to filter mail for spam or viruses before delivering it
+- When the destination host is down
+- When the destination host isn’t directly reachable from the Internet
+- When the local sysadmin knows where mail should be sent better than your correspondents do (i.e., always)
+
+### CNAME records
+
+The CNAME (Canonical Name) record is used to create an alias for a hostname. The format of the CNAME record is:
+
+```text
+nickname    [ttl]   [IN]    CNAME    hostname
+```
+
+When DNS software encounters a CNAME record, it stops its query for the nickname and re-queries for the real name. If a host has a   CNAME record, other records (A, MX, NS, etc) for that host must refer to its real name, not its nickname.
+
+CNAME records can nest eight deep. That is, a CNAME record can point to another CNAME, and that CNAME can point to a third CNAME, and so on, up to seven times; the eighth target must be the real hostname.
+
+You can avoid CNAMEs altogether by using multiple A records for the same hostname. 
+
+RFC1033 requires the "apex" of a zone (the root domain or naked domain) to have an A record, not a CNAME.
+
+You can do this:
+
+```text
+www.example.net.  IN  CNAME some-name.somecloud.net.
+```
+
+But you can't do this:
+
+```text
+example.net.  IN  CNAME some-name.somecloud.net.
+```
+
+### SRV records
+
+SRV records are a type of DNS record designed to specify the location of services within a domain, offering a more structured and flexible alternative to traditional CNAME records. This enables clients to discover the hostname and port of services like FTP servers without relying on conventions or additional CNAME entries. 
+
+The format of the SRV record is:
+
+```text
+_service.proto.name    [ttl]   [IN]    SRV    priority weight port target
+```
+
+where `service` is a service defined in the IANA assigned numbers database ([numbers](https://www.iana.org/numbers.htm)), `proto` is either `tcp` or `udp`, `name` is the domain name, `priority` is the priority of the target host, `weight` is the relative weight for records with the same priority, `port` is the port on which the service is running, and `target` is the canonical hostname of the machine providing the service.
+
+![srv-atrust](./data/srv-atrust.png)
+
+### TXT records
+
+A TXT record adds arbitrary text to a host’s DNS records. For example, some sites have a TXT record that identifies them:
+
+```text
+             IN      TXT    "Application for atrust.com"
+```
+
+This record directly follows the SOA and NS records for the atrust.com zone and so inherits the name field from them.
+
+The format of the TXT record is:
+
+```text
+name    [ttl]   [IN]    TXT    "info"...
+```
+
+## The BIND software
+
+BIND (Berkeley Internet Name Domain) is the most widely used DNS software on the Internet. It is a complete and mature implementation of the DNS protocol. BIND is open source and is maintained by the Internet Systems Consortium (ISC).
+
+### Components of BIND
+
+BIND consists of several components:
+
+- The `named` daemon is the DNS server that answers queries about hostnames and IP addresses.
+- A resolver library that queries DNS servers on behalf of client programs.
+- Several command-line tools for querying DNS servers and testing DNS configurations.
+- A program called `rndc` that controls the operation of the `named` daemon.
+
+### COnfiguration files
+
+The primary configuration file is **named.conf**, which serves as the main configuration file for BIND. It defines global server options, logging settings, access controls, zone definitions, and other crucial parameters.
+
+Within named.conf, additional files are often included for better organization and modularity. Some of these key files include:
+
+*   **named.conf.options:** Contains default settings for options like recursion, DNSSEC validation, query logging, and forwarder configuration.
+*   **named.conf.local:** Often used to define zones that are specific to the local server, such as reverse lookup zones or private DNS zones.
+*   **named.conf.zones:** Lists the zones that BIND is authoritative for, along with their associated zone files.
+
+Zone files, typically named after the domain they represent (e.g., example.com.zone), contain the actual DNS records for a particular zone, such as A records for IP addresses, MX records for mail servers, and CNAME records for aliases.
+
+![bind-statements](./data/bind-statements.png)
+
+
+## Split DNS and the view statement
+
+Split DNS is a configuration in which a DNS server provides different sets of DNS information based on the source of the DNS request. This is useful for organizations that want to provide different DNS responses to internal and external users.
+
+The `view` statement in BIND allows you to configure split DNS. With views, you can define different sets of DNS records for different clients based on their IP addresses. This enables you to provide different DNS responses to internal and external users, or to users in different geographical locations.
+
+The syntax for the view statement is:
+
+```text
+view "view-name" {
+    match-clients { client-ip-address; };
+    match-destinations { destination-ip-address; };
+    match-recursive-only yes | no;
+    view-options;
+    zone "zone-name" {
+        zone-options;
+    };
+};
+```
+
+For example:
+
+```text
+view "internal" {
+    match-clients { our-network; };  // Only clients in our network
+    recursion yes;
+    zone "example.com" {
+        type master;
+        file "internal-example.db";
+    };
+};
+
+view "external" {
+    match-clients { any; };  // Any client
+    recursion no;
+    zone "example.com" {
+        type master;
+        file "external-example.db";
+    };
+};
+```
+
+The order of the view statements is important. BIND processes the views in the order they are defined in the configuration file. The first view that matches the client’s IP address is used to determine which DNS records to return.
+
+## DNS Security issues
+
+By default, anyone on the Internet can investigate your domain with individual queries from tools such as **dig**, **host**, **nslookup**, and **drill**. In some cases, they can dump your entire DNS database.
+
+To address such vulnerabilities, name servers support various types of access control that key off of host and network addresses or cryptographic authentication. 
+
+![sec-feat-bind](./data/sec-feat-bind.png)
+
+
+### DNSSEC
+
+DNSSEC is a set of DNS extensions that authenticate the origin of zone data and verify its integrity by using public key cryptography. That is, the extensions allow DNS clients to ask the questions "Did this DNS data really come from the zone’s owner?" and "Is this really the data sent by the zone’s owner?"
+
+DNSSEC relies on a cascading chain of trust. The root servers validate information for the top-level domains, the top-level domains validate information for the second-level domains, and so on.
+
+Each zone has its own public and private key pair. It has two sets of keys: a zone-signing key (ZSK) and a key-signing key (KSK). The ZSK is used to sign the zone’s data, and the KSK is used to sign the ZSK.
+
+### DNNSEC resource records
+
+DNSSEC introduces several new resource records (5 in total):
+
+- **DS** (Designated Signer): A DS record is used to establish a chain of trust between parent and child zones. The parent zone signs the child zone’s public key with its private key and publishes the DS record in its zone file.
+
+Example:
+
+```text
+example.com.  IN  DS  12345 5 1 1234567890abcdef1234567890abcdef1234567890abcdef
+```
+
+- DNSKEY: The DNSKEY record contains the public key for a zone. It is used to verify the digital signatures in the zone’s RRSIG records. Keys included in the DNSKEY record can be either ZSKs or KSKs. To differentiate between the two, the DNSKEY record includes a flag field that indicates the key’s purpose (256 for KSKs and 257 for ZSKs). [manually-performing-dnssec-validation](https://blog.manton.im/2017/03/manually-performing-dnssec-validation.html)
+- RRSIG: The RRSIG record contains a digital signature for a set of resource records. It is used to verify the authenticity and integrity of the data in the zone. The RRSIG record is generated by signing the data in the zone with the zone’s private key.
+- NSEC or NSEC3: The NSEC record is used to prove the nonexistence of a DNS record. It lists the types of records that exist between two existing records in the zone. The NSEC3 record is similar to the NSEC record but provides additional security by hashing the record names.
+For example a server might respond to a query for A records named `bork.atrust.com` with an NSEC record that certifies the nonexistence of any A records between `bark.atrust.com` and `bundt.atrust.com`.
+
+### Zone signing
+
+To sign a zone, you need to generate a key pair for the zone, sign the zone’s data with the private key, and publish the public key in the zone’s DNSKEY record. The signed data is stored in a separate file called a signed zone file.
+
+The process of signing a zone is called zone signing. It involves the following steps:
+
+1. Keypair generation: you generate ZSK and KSK key pairs for the zone.
+
+For ZSK:
+
+```bash
+$ dnssec-keygen -a RSASHA256 -b 1024 -n ZONE example.com
+# output: Kexample.com.+008+12345 (meaning it has generated Kexample.com.+008+12345.key and Kexample.com.+008+12345.private)
+```
+
+For KSK:
+
+```bash
+$ dnssec-keygen -f KSK -a RSASHA256 -b 2048 -n ZONE -f KSK example.com
+# output: Kexample.com.+008+54321
+```
+
+Then copies the public keys to the zone file:
+
+```bash
+$ cat Kexample.com.*.key >> example.com
+```
+
+2. Zone signing: Now that you’ve got keys, you can sign your zones with the dnssec-signzone command, which adds RRSIG and NSEC or NSEC3 records for each resource record set. These commands read your original zone file and produce a separate, signed copy named zonefile.signed.
+
+```bash
+$ dnssec-signzone -o example.com -N increment -k Kexample.com.+008+54321 example.com Kexample.com.+008+12345
+``` 
+
+Signed zone files are typically four to ten times larger than the original zone, and all your nice logical ordering is lost. A line such as
+
+![signed-zone](./data/signed-zone.png)
+
+### DNSSEC chain of trust
+
+When Name servers query they use EDNS0 (Extension Mechanisms for DNS) and set the DNSSEC-aware option in the DNS header of the packet. When answering a query that arrives with that bit set, they include the signature data with their answer.
+
+A client that receives signed answers can validate the response by checking the record’s signatures with the appropriate public key. But it gets this key from the zone’s own DNSKEY record. But how does it know that the DNSKEY record is valid? It doesn’t. It has to get the DS record from the parent zone and validate that with the parent’s public key. And so on, all the way up to the root.
+
+### DNSSEC key rollover
+
+Ok not going deeper. Here's the process:
+
+1. Generate a new ZSK.
+2. Include it in the zone file.
+3. Sign or re-sign the zone with the KSK and the old ZSK.
+4. Signal the name server to reload the zone; the new key is now there.
+5. Wait 24 hours (the TTL); now everyone has both the old and new keys.
+6. Sign the zone again with the KSK and the new ZSK.
+7. Signal the name server to reload the zone.
+8. Wait another 24 hours; now everyone has the new signed zone.
+9. Remove the old ZSK at your leisure, e.g., the next time the zone changes.
+
+### DNSSEC tools
+
+With the advent of BIND 9.10 comes a new debugging tool. The Domain Entity Lookup and Validation engine (DELV) looks much like dig but has a better understanding of DNSSEC. In
+fact, delv checks the DNSSEC validation chain with the same code that is used by the BIND 9 named itself.
+
+In addition to the DNSSEC tools that come with BIND, four other tools are available: `ldns`, `DNSSEC-Tools`, `OpenDNSSEC`, and `RIPE`.
+
