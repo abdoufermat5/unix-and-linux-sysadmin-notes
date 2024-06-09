@@ -32,7 +32,7 @@ The basic assumptions are as follows:
 - Data are read often but written infrequently.
 - Searching is a common operation.
 
-Ironically, LDAP is anything but lightweight. It was originally a gateway protocol that allowed TCP/IP clients to talk to an older directory service called X.500 (obsolete now). 
+Ironically, LDAP is anything but lightweight. It was originally a gateway protocol that allowed TCP/IP clients to talk to an older directory service called X.500 (obsolete now).
 
 Microsoft’s Active Directory is the most common instantiation of LDAP, and many sites use it for both Windows and Unix systems. For environments that are Unix-only, OpenLDAP is a popular choice.
 
@@ -73,4 +73,63 @@ This notation is a simple example of LDIF (LDAP Data Interchange Format). Entrie
 LDAP entries are typically schematized through the use of an objectClass attribute. Object classes specify the attributes that an entry can contain, some of which may be required for validity. The schemata also assign a data type to each attribute. Object classes nest and combine in the traditional OO fashion.
 
 ![common-attrs](./data/common-attrs.png)
+
+### OpenLDAP
+
+In the OpenLDAP distribution, slapd is the standard LDAP server daemon. In an environment with multiple servers, `slurpd` runs on the master server and replicates changes to the slave servers. 
+
+The setup is straightforward:
+
+Create an `/etc/openldap/slapd.conf` file that contains the server’s configuration.
+
+```bash
+database bdb
+suffix "dc=abacus,dc=net"
+rootdn "cn=admin,dc=abacus,dc=net"
+rootpw {crypt}xjsifuFDGRs
+directory /var/lib/ldap
+```
+
+The database format defaults to Berkeley DB. The suffix is the top of the LDAP hierarchy similar to DNS root domain. The rootdn is the distinguished name of the root user. The rootpw is the root user’s password. The directory is where the database files are stored.
+
+## Using directory services for login
+
+Once you have a directory service set up, complete the following configuration chores so your system can enter SSO paradise:
+
+- If you are planning to use AD with Kerberos, configure Kerberos and join the system to the AD domain.
+- Configure sssd to communicate with the appropriate identity and authentication services(AD, LDAP, or Kerberos).
+- Configure the name service switch, `/etc/nsswitch.conf`, to use sssd for user and group information.
+- Configure PAM to use sssd for authentication.
+
+SOme use the traditional `getpwent` family of library routines to look up user information, whereas others use the `nsswitch` mechanism to determine which library to use. The `nsswitch` mechanism is a simple configuration file, `/etc/nsswitch.conf`, that tells the system which library to use for each type of information.
+
+### Kerberos
+
+Kerberos is a ticket-based authentication system that uses symmetric key cryptography. The debut of `realmd` has made the task of joining a Linux system to an Active Directory domain much easier. `realmd` act as a configuration tool for sssd and Kerberos.
+
+Before joining an AD domain, make sure the following are in place:
+
+- `realmd` is installed on the Linux system.
+- `sssd` is installed.
+- `ntpd` is installed and running.
+- You know the correct name of the AD domain.
+- You have the credentials of a user who has permission to join the domain.
+
+For example, to join the `abacus.net` domain, and the authorized user is `admin_user`, run the following command:
+
+```bash
+sudo realm join abacus.net -U admin_user
+
+# then verify with
+realm list
+```
+
+### SSSD: System Security Services Daemon
+
+The UNIX and Linux road to SSO nirvana has been a rough one. Years ago, it was common to set up independent authentification system for every service or app. This
+approach often resulted in a morass of separate configurations and undocumented dependencies that were impossible to manage over time. Users’ passwords would work with one application but not another, causing frustration for everyone.
+
+Microsoft formerly published extensions (originally called “Services for UNIX,” then “Windows Security and Directory Services for UNIX,” and finally, “Identity Management for UNIX” in Windows Server 2012) that facilitated the housing of UNIX users and groups within Active Directory. Putting the authority for managing these attributes in a non-UNIX system was an unnatural fit, however. To the relief of many, Microsoft discontinued this feature as of Windows Server 2016.
+
+These issues needed some kind of comprehensive solution, and that’s just what we got with `sssd`. sssd is a one-stop shop for user identity wrangling, authentication, and account mapping. It can also cache credentials off-line, which is useful for mobile devices. sssd supports authentication both through native LDAP and through Kerberos.
 
