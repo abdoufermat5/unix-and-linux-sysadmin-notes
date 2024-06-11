@@ -133,3 +133,67 @@ Microsoft formerly published extensions (originally called “Services for UNIX,
 
 These issues needed some kind of comprehensive solution, and that’s just what we got with `sssd`. sssd is a one-stop shop for user identity wrangling, authentication, and account mapping. It can also cache credentials off-line, which is useful for mobile devices. sssd supports authentication both through native LDAP and through Kerberos.
 
+Here's an example of `sssd` configuration file:
+
+```bash
+[sssd]
+services = nss, pam
+domains = LDAP
+
+[domain/LDAP]
+id_provider = ldap
+auth_provider = ldap
+ldap_uri = ldap://ldap.abacus.net
+ldap_user_search_base = dc=abacus,dc=net
+tls_reqcert = demand
+ldap_tls_cacert = /etc/ssl/certs/ca-certificates.crt
+```
+
+For obvious security reasons, sssd does not allow authentication over an unencrypted channel, so the use of LDAPS/TLS is required. Setting the tls_reqcert attribute to demand in the example above forces sssd to validate the server certificate as an additional check. sssd drops the connection if the certificate is found to be deficient.
+
+There's three concepts in `sssd`:
+
+- **The Monitor**: This is the main daemon that controls the other daemons. It reads the configuration file and starts the other daemons.
+- **The Providers**: These are modules with specific auth backend awareness. They are responsible for the actual authentication and identity lookups.
+- **Responders**: They interact with Linux and implement features.
+
+![sssd-conf-file](./data/sssd-conf-file.png)
+
+### PAM
+
+The PAM system relieves programmers of the chore of implementing direct connections to authentication systems and gives sysadmins flexible, modular control over the system's authentication methods.
+
+In the distant past, commands like `login` included hardwired authentication code that prompted the user for a password and checked it against the encrypted password in `/etc/shadow` (or `/etc/passwd` in the old days). It was impossible to change the authentication method without recompiling the program and administrators had little or no control over details such as whether the system should accept “password” as a valid password.. PAM was created to solve this problem.
+
+PAM puts the system’s authentication routines into a shared library that login and other programs can call. By separating authentication functions into a discrete subsystem, PAM makes it easy to integrate new advances in authentication and encryption. For instance, MFA (multi-factor authentication) can be added to a system without changing the login program.
+
+PAM is configured through a series of files in the `/etc/pam.d` directory. Each file corresponds to a specific service or application. The files contain a series of lines that define the authentication steps that PAM should take when the service is invoked.
+
+The general format of a line in a PAM configuration file is:
+
+```text
+module-type control-flag module-path [ arguments ]
+```
+
+The order of the modules in the file is important (prompting for a password before checking it, for example).
+
+The `module-type` is the type of module being called. The most common types are: `auth`, `account`, `password`, and `session`. `auth` modules identify the user and grant group membership. Modules that do `account` chores enforce restrictions such as limiting logins to particular time of day, limiting the number of simultaneous users, or limiting the ports on which logins can occur. (For example, you would use an `account`-type module to restrict root logins to the console.) `session` chores includes tasks that are done before, or after a user is granted access; for example mouting a user's home directory. Finally `password` modules change a user's passwor or passphrase.
+
+The `control-flag` specifies how the modules in the stack should interact to produce an ultimate result for the stack. The most common control flags are `include`, `required`, `requisite`, `sufficient`, and `optional`. The `include` flag is used to include the configuration of another service. The `required` flag means that the module must succeed for the stack to succeed. The `requisite` flag means that the module must succeed, but if it fails, the stack fails immediately. The `sufficient` flag means that if the module succeeds, the stack succeeds immediately (HAHAHA! LIES). The `optional` flag means that the module is not required for the stack to succeed.
+
+Example of `/etc/pam.d/login`:
+
+![pam-example](./data/pam-example.png)
+
+The auth stack includes several modules. On the first line, the pam_nologin module checks for the existence of a `/etc/nologin` file. If the file exists, the module aborts the login immediately unless the user is root. The pam_securetty module ensures that root can only log on terminals listed in `/etc/securetty`. `pam_env` sets up the user’s environment variables. The pam_unix module checks the user’s password against the encrypted password in `/etc/shadow`. If the user doesn’t have a local UNIX account, `pam_sss` attempts to authenticate the user against the sssd service.
+
+## LDAP alternatives
+
+- **NIS**: The Network Information Service (NIS) is a simple directory service that predates LDAP. It is still in use in some environments (FreeBSD, for example). 
+- **rsync**: The `rsync` command can be used to synchronize files between systems. It is not a directory service, but it can be used to keep files in sync. Here's an example of how to use `rsync` to keep the `/etc/passwd` and `/etc/shadow` files in sync between two systems:
+
+```bash
+rsync -gopt -e ssh /etc/passwd /etc/shadow abdoufermat:/etc
+```
+
+The -gopt options preserve the permissions, ownerships, and modification times of the file.
