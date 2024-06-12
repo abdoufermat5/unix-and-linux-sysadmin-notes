@@ -96,3 +96,10 @@ As name suggests, SMTP is a simple protocol. An MTA connects to your mail server
 
 ### EHLO
 
+ESMTP speackers use `EHLO` instead of `HELO` to announce themselves. The server responds with a list of ESMTP extensions it supports. If the peers return an error to the `EHLO` command, the client falls back to using `HELO`.
+
+A typical SMTP conversation to deliver an email message goes as follows: HELO or EHLO, MAIL FROM, RCPT TO, DATA, and QUIT.
+
+### SMTP error codes
+
+Also specified in the RFCs that define SMTP are a set of temporary and permanent error codes. These were originally three-digit
