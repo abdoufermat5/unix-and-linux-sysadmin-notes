@@ -102,4 +102,8 @@ A typical SMTP conversation to deliver an email message goes as follows: HELO or
 
 ### SMTP error codes
 
-Also specified in the RFCs that define SMTP are a set of temporary and permanent error codes. These were originally three-digit
+Also specified in the RFCs that define SMTP are a set of temporary and permanent error codes. These were originally three-digit codes (e.g., 550). The first digit indicates the general category of the error: 2xx means success, 4xx means temporary failure, and 5xx means permanent failure.
+
+The 3-digit error codes did not scale well, so we defined an expanded error code format known as a Delivery Status Notification (DSN). DNSs have the format `X.Y.Z`, instead of `XYZ`, and each of the individual can be multidiigit number. The X must still be 2, 4, or 5, the Y digit specifies a topic, and the Z digit provides more detail. The new system uses the second number to distinguish host errors from mailbox errors.
+
+![dsn-error-codes](./data/dsn-error-codes.png)
