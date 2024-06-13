@@ -107,3 +107,202 @@ Also specified in the RFCs that define SMTP are a set of temporary and permanent
 The 3-digit error codes did not scale well, so we defined an expanded error code format known as a Delivery Status Notification (DSN). DNSs have the format `X.Y.Z`, instead of `XYZ`, and each of the individual can be multidiigit number. The X must still be 2, 4, or 5, the Y digit specifies a topic, and the Z digit provides more detail. The new system uses the second number to distinguish host errors from mailbox errors.
 
 ![dsn-error-codes](./data/dsn-error-codes.png)
+
+### SMTP Authentication
+
+The protocol supports several different authentication mechanisms. The exchange is as follows:
+
+1. The client says EHLO, announcing that it speaks ESMTP.
+2. The server responds and advertises its authentication mechanisms.
+3. The client says AUTH and names a specific mechanism that it wants to use, optionally including its authentication data.
+4. The server accepts the data sent with AUTH or starts a challenge and response sequence with the client.
+5. The server either accepts or denies the authentication attempt.
+
+## SPAM AND MALWARE
+
+Spam is the jargon word for junk mail, also known as unsolicited commercial email or UCE. It is one of the most universally hated aspects of the Internet. Once upon a time, system administrators spent many hours each week hand-tuning block lists and adjusting decision weights in home-grown spam filtering tools. Unfortunately, spammers have become so crafty and commercialized that these measures are no longer an effective use of system administrators’ time.
+
+### Forgeries
+
+Forging email is trivial; many user agents let you fill in the sender’s address with anything you want. The practice of targeting users with forged email is commonly called “phishing.” Phishing is a form of social engineering in which the attacker tries to trick the recipient into revealing sensitive information, such as passwords or credit card numbers.
+
+### SPF and Sender ID
+
+Sender Policy Framework (SPF) and Sender ID are two methods for validating the authenticity of the sender’s address in an email message. SPF is a DNS-based system that allows domain owners to publish a list of IP addresses that are authorized to send email on behalf of their domain. Sender ID is a Microsoft-developed system that is quite similar to SPF.
+
+### DKIM
+
+DomainKeys Identified Mail (DKIM) is a system that allows a domain owner to sign email messages with a private key. The recipient can then verify the signature by looking up the public key in the domain’s DNS records. DKIM is a more secure system than SPF or Sender ID because it cryptographically signs the message.
+
+## Message privacy and encryption
+
+By default, all mail is sent unencrypted. Educate your users that they should never send sensitive data through email unless they make use of an external encryption package or your organization has provided a centralized encryption solution for email. Even with encryption, electronic communication can never be guaranteed to be 100% secure.
+
+Historically, the most common external encryption packages have been Pretty Good Privacy (PGP), its open-source cousin GNU Privacy Guard (GPG), and S/MIME. PGP and GPG are both based on public-key cryptography, which uses a pair of keys: a public key that can be shared with anyone and a private key that is kept secret. S/MIME is based on the same principles but is more tightly integrated with email clients.
+
+Most organizations that handle sensitive data in email (especially ones that communicate with the public, such as health care institutions) opt for a centralized service that uses proprietary technology to encrypt messages.
+
+At least in the email realm, data loss prevention (DLP) is a kissing cousin to centralized encryption. DLP systems scan outgoing email for sensitive data and either block the message or encrypt it before it leaves the organization.
+
+## Aliases
+
+Aliases can define mailing lists, forward mail among machines, or allow users to be referred to by different names. Aliases are defined in the /etc/aliases file, which is read by the newaliases command. The aliases file is a simple text file that maps one address to another.
+
+The format of an entry in the aliases file is as follows:
+
+```
+local-name: recipient1, recipient2, recipient3,...
+```
+
+where local-name is the original address to be matched against incoming messages and the recipient list contains either recipient addresses or the names of other aliases.
+
+From mail’s point of view, the aliases file supersedes /etc/passwd, so the entry
+
+```
+abdou: abdou@saclay.edu
+```
+
+would prevent the local user abdou from ever receiving any mail.
+
+The aliases file should always contain an alias named “postmaster” that forwards mail to whoever maintains the mail system. An alias for automatic messages from the MTA must also be present; it’s usually called Mailer-Daemon and is often aliased to postmaster.
+
+Sadly, the mail system is so commonly abused these days that some sites configure their standard contact addresses to throw mail away instead of forwarding it to a human user. Entries such as
+
+```
+mailer-daemon:  postmaster
+postmaster:     "/dev/null"
+```
+
+are common. This is not recommended, instead use:
+
+```
+mailer-daemon:  "/dev/null"
+postmaster:     root
+```
+
+### Getting aliases from file
+
+The `:include:` directive allows you to include aliases from another file. This is useful for keeping the aliases file manageable and for sharing aliases among multiple machines. The syntax is as follows:
+
+```
+local-name: :include:/path/to/file
+```
+
+### Mailing to files
+
+The aliases file can also be used to deliver mail to a file. This is useful for creating mailing lists that are not handled by a mailing list manager. For example:
+
+```
+cron-status: /usr/local/admin/cron-status-messages
+```
+
+It’s useful to be able to send mail to files, but this feature arouses the interest of the security police and is therefore restricted.
+
+### Mailing to programs
+
+An alias can also route mail to the standard input of a program. This behavior is specified with a line such as
+
+```
+autolog: "|/usr/local/bin/autologger"
+```
+
+It’s even easier to create security holes with this feature than with mailing to a file, so it’s also restricted.
+
+### Building the hashed alias database
+
+SInce entries in the aliases file are unordered, the MTA must read the entire file to find an alias. To speed up the process, the MTA builds a hashed database of the aliases file. The newaliases command reads the aliases file and creates a database file that is read by the MTA.
+
+## Email configuration
+
+The heart of an email system is its MTA, or mail transport agent. sendmail is the original UNIX MTA, written by Eric Allman while he was a graduate student. It has been the most widely used MTA for decades. Postfix is a more modern MTA that was designed to be more secure and easier to configure than sendmail. Exim is another MTA that is popular in some circles.
+
+![mta-market](./data/mta-market.png)
+
+If you are implementing a mail system from scratch and have no site politics or biases to deal with, you may find it hard to choose an MTA. sendmail is largely out of vogue, with the possible exception of pure FreeBSD sites. Exim is powerful and highly configurable but suffers in complexity. Postfix is simpler, faster, and was designed with security as a primary goal. If your site or your sysadmins have a history with a particular MTA, it’s probably not worth switching unless you need features that are not available from your old MTA.
+
+## Postfix
+
+Postfix is a modern MTA that was designed to be more secure and easier to configure than sendmail. It is the default MTA on many Linux distributions, including Ubuntu and CentOS. Postfix is a drop-in replacement for sendmail and can be configured to work with most sendmail-compatible tools.
+
+Postfix speaks ESMTP. Virtual domains and spam filtering are both supported. For address rewriting, Postfix relies on table lookups from flat files, Berkeley DB, DBM, LDAP, NetInfo, or SQL databases.
+
+### Postfix architecture
+
+Postfix comprises several small, cooperating programs that send network messages, receive messages, deliver email locally, etc. Communication among them is performed through local domain sockets or FIFOs. This architecture is quite different from that of sendmail and Exim, wherein a single large program does most of the work.
+
+The master program starts and monitors all Postfix processes. Its configuration file, **master.cf** lists the subsidiary programs along with information about how they should be started. The default values in that file cover most needs; in general, no tweaking is needed.
+
+![postfix-arch](./data/postfix-arch.png)
+
+- **smtpd**: The SMTP server daemon listens for incoming connections from other MTAs and from MUAs. It is the program that receives email from the outside world.
+- **pickup**: The pickup daemon reads mail from the local filesystem and passes it to the cleanup daemon.
+- **cleanup**: The cleanup daemon rewrites headers and performs other cleanup tasks on incoming mail.
+- **trivial-rewrite**: The trivial-rewrite daemon rewrites addresses in email messages such as appending the domain name to addresses that are not fully qualified.
+- **qmgr**: manages five queues that contain mail waiting to be delivered:
+- - `incoming` mail from the network
+- - `active` mail that is being delivered
+- - `deferred` mail that could not be delivered immediately
+- - `hold` mail that has been placed on hold by an administrator
+- - `corrupt` mail that is damaged and cannot be delivered
+- **smtp**: The SMTP client daemon sends mail to other MTAs.
+- **lmtp**: The LMTP client daemon delivers mail to local mailboxes.
+- **local**: The local delivery agent delivers mail to local mailboxes. It resolves addresses in the aliases table and follows instructions found in recipient's .forward files.
+- **virtual**: The virtual delivery agent delivers mail to virtual mailboxes; that is, mailboxes that are not related to a local UNIX account but that still represent valid email destinations.
+- **pipe**: The pipe delivery agent delivers mail to a program. 
+
+### Security
+
+Postfix implements security at several levels. Most of the Postfix server programs can run in a chrooted environment. They are separate programs with no parent/child relationship. None of them are setuid. The mail drop directory is group-writable by the postdrop group, to which the postdrop program is setgid.
+
+### Postfix commands and documentation
+
+- postalias – builds, modifies, and queries alias tables
+- postcat – prints the contents of queue files
+- postconf – displays and edits the main configuration file, main.cf
+- postfix – starts and stops the mail system (must be run as root)
+- postmap – builds, modifies, or queries lookup tables
+- postsuper – manages mail queues
+- sendmail, mailq, newaliases – are sendmail-compatible replacements
+
+### Configuration
+
+The **main.cf** file is Postfix's principal configuration file. The postconf(5) man page describes every parameter you can set in the main.cf file.
+
+**Basic settings**: The simplest possible Postfix configuration is an empty file. Surprisingly, this is a perfectly reasonable setup. It results in a mail server that delivers email locally within the same domain as the local hostname and that sends any messages directed to nonlocal addresses directly to the appropriate remote servers.
+
+**Null client**: that is, a system that doesn’t deliver email locally but rather forwards outbound mail to a designated central server. To implement this configuration, you define several parameters, starting with mydomain, which defines the domain part of the hostname, and myorigin, which is the mail domain appended to unqualified email addresses. If these two parameters are the same, you can write something like this:
+
+```
+mydomain = cs.colorado.edu
+myorigin = $mydomain
+mydestination =
+relayhost = [mail.cs.colorado.edu]
+```
+
+The last thing to do is to comment out the **smtpd** line in the master.cf file. This tells Postfix not to listen for incoming mail.
+
+*Lookup tables*: Many aspects of Postfix’s behavior are shaped through the use of lookup tables, which can map keys to values or implement simple lists. For example, the default setting for the alias_maps table is
+
+```
+alias_maps = dbm:/etc/mail/aliases
+```
+
+Data sources are specified with the notation `type:path`. Multiple values can be separated by commas, spaces, or both.
+
+Text files are compiled to their binary formats with the postmap command for normal tables and the postalias command for alias tables. 
+
+*Local delivery* The local program delivers mail to local recipients. It also handles local aliasing. For example, if mydestination is set to cs.colorado.edu and email arrives for the recipient evi@cs.colorado.edu, local first consults the alias_maps tables and then substitutes any matching entries recursively. By default, local writes to standard mbox-format files under /var/mail.
+
+### Virtual domains
+
+To host a mail domain on your Postfix mail server, you have three choices:
+
+- List the domain in mydestination. Delivery is performed as described above: aliases are expanded and mail is delivered to the corresponding accounts.
+- List the domain in the virtual_alias_domains parameter. 
+- List the domain in the virtual_mailbox_domains parameter. 
+
+### Access control
+
+Mail servers should relay mail for third parties only on behalf of trusted clients. If a mail server forwards mail from unknown clients to other servers, it is a so-called open relay, which is bad. Fortunately, Postfix doesn’t act as an open relay by default.
+
+Access control for SMTP transactions is configured in Postfix through “access restriction lists.” The most important parameter is `smtpd_recipient_restrictions`. That’s because access control is most easily performed when the recipient address is known and can be identified as being local or not. 
