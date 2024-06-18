@@ -48,6 +48,28 @@ The notes are organized in chapters. Each chapter has a `readme.md` file that co
 - [Chapter30: Data Center Basics](./data-center-basics/readme.md)
 - [Chapter31: Methodology, Policy, and Politics](./methodology-policy-and-politics/readme.md)
 
+## Testing lab
+
+I've set up a testing lab to test the concepts discussed in the book. You will need to install docker and docker-compose to run the lab. 
+
+To install docker and docker-compose, follow the instructions [here](https://docs.docker.com/get-docker/)
+
+To run the lab, clone the repository and run the following command:
+
+```bash
+docker compose up -d --build
+```
+
+This will create two containers, one for the Debian server and the other for the CentOS server. You can access the containers using the following command:
+
+```bash
+docker exec -it lab-[debian|centos] bash
+```
+
+You will then be logged into the container. You can then run the commands discussed in the book to test the various concepts.
+
+A volume is mounted to the `lab-[debian|centos]` container. You can use this volume to share files between your host machine and the container.
+
 ## Why I am reading this book
 
-I am reading this book to learn more about Unix and Linux system administration. I am a software engineer and I have been working with Linux for a while. I want to learn more about the operating system and how to manage it. I am also interested in learning more about system administration in general. I am reading this book to get a better understanding of the topic. 
+I am reading this book to learn more about Unix and Linux system administration. As a DevOps engineer, it's a must to know how to manage Unix and Linux systems. 
