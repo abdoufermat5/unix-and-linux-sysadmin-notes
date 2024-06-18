@@ -1,0 +1,11 @@
+# Dockerfile.centos
+FROM centos/systemd
+
+# Install some basic tools
+RUN yum update -y && yum install -y \
+    curl \
+    vim \
+    && yum clean all
+
+# Set the entrypoint
+ENTRYPOINT ["/bin/bash"]

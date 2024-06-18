@@ -1,0 +1,14 @@
+# Dockerfile.debian
+FROM debian:12
+
+# Install some basic tools
+RUN apt-get update && apt-get install -y \
+    curl \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set the entrypoint
+ENTRYPOINT ["/bin/bash"]
