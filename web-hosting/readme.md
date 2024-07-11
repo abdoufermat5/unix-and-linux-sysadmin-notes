@@ -340,7 +340,9 @@ To handle the workload efficiently, NGINX uses an event-driven, asynchronous arc
 
 The event `MPM` included in newer releases of Apache uses a similar architecture, but for high-volule and performance-sensitive sites, NGINX is generally considered superior.
 
-When running NGINX, you can expect to see a master process and one or more worker processes. The master process is responsible for reading the configuration file, binding to network ports, and starting worker processes. Workers do the actual work of handling connections and requests. Some config use additional processes for caching, logging, and other tasks. As in Apache, the master process runs as root so it can bind to privileged ports (below 1024).
+When running NGINX, you can expect to see a master process and one or more worker processes. The master process is responsible for reading the configuration file, binding to network ports, and starting worker processes. Workers do theo actual work of handling connections and requests. Some config use additional processes for caching, logging, and other tasks. As in Apache, the master process runs as root so it can bind to privileged ports (below 1024).
+
+### Configuring NGINX
 
 ![nginx-conf-details-platform](./data/nginx-conf-details-platform.png)
 
@@ -357,4 +359,234 @@ http {
 }
 ```
 
-The outermost
+The outermost context (called `main`) is implicit and configure the core functionality. The `events` and `http` contexts live within `main`. `events` configures connection handling. If blank, default values are implied:
+
+- Run one worker process.
+- Listen on port 80 if started as root or 8000 otherwise.
+- Write logs to **/var/log/nginx** (chosen at compile time)
+
+The `http` context contains all directives relating to web and HTTP proxy services. `server` contexts, which define virtual hosts, are nested within `http`.
+
+
+```
+http {
+    server {
+        server_name www.admin.com admin.com; # this can be regex too: ~^(www\.)?(?<domain>(admin|example).com)$ 
+        root /var/www/admin.com;  # we would use $domain such as /var/www/$domain
+    }
+    server {
+        server_name www.example.com example.com;
+        root /var/www/example.com;
+    }
+}
+```
+
+Be aware that NGINX will perform a regular expression match on every request to determine which server block to use. This can be a performance issue if you have many server blocks. It’s perfectly reasonable to use regex in **nginx.conf**, but make sure they're delivering actual value, and try to keep them low in the configuration hierarchy so that they activate only when necessary. 
+
+Name-based virtual hosts can be distinguished from IP-based hosts by using the `listen` and `server_name` directives together. 
+
+
+```
+server {
+    listen 10.0.10.10:80;
+    server_name www.admin.com admin.com;
+    root /var/www/admin.com/site1;
+}
+
+server {
+    listen 10.0.10.11:80;
+    server_name www.admin.com admin.com;
+    root /var/www/admin.com/site2;
+}
+```
+
+This configuration shows two versions of admin.com being served from different web roots. The IP address of the interface on which the request was received determines which version of the site the client sees.
+
+The `root` is the base directory where HTML, images, stylesheets, scripts, and other files for the virtual host are stored. By default, NGINX just serves files out of the `root`, but you can use the `location` directive to do more sophisticated request routing. If a given path isn’t matched by a `location` directive, NGINX automatically falls back to the `root`.
+
+The following example uses `location` in combination with the `proxy_pass` directive. It instructs NGINX to serve most requests from web root but forward requests for http://www.admin.com/nginx to nginx.org.
+
+```
+server {
+    server_name www.admin.com admin.com;
+    root /var/www/admin.com;
+    location /nginx {
+        proxy_pass http://nginx.org;
+    }
+}
+```
+
+`proxy_pass` instructs NGINX to act as a proxy and replay requests from clients to another downstream server.
+`location` can use regex to perform powerful path-based routing to different sources based on the requested content.
+
+A common pattern among distributions is to set sensible defaults for many directives in the global `http` context, then use the `include` directive to add site-specific virtual hosts to the final configuration.
+
+### Configuring TLS for NGINX
+
+Enable TLS and point to the certificate and private key file like so:
+
+```
+server {
+    listen 443;
+    ssl on;
+    ssl_certificate /etc/ssl/certs/admin.com.crt;
+    ssl_certificate_key /etc/ssl/private/admin.com.key;
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE...# truncated
+    ssl_prefer_server_ciphers on;
+
+    server_name www.admin.com admin.com;
+    root /var/www/admin.com;
+}
+```
+
+Use the `ssl_ciphers` directive to require cryptographically strong cipher suites and to disable weaker ciphers. The `ssl_prefer_server_ciphers` option in conjunctionwith `ssl_ciphers` instructs NGINX to choose from the server's list rather than from the client's; otherwise, the client could suggest any cipher it pleased. The ordering of a ciphersuite is very important because it decides which algorithms are going to be selected in priority (the `ssl_ciphers`).
+
+The server certificate is a public entity (`admin.com.crt`). It is sent to every client that connects to the server. The private key is a secure entity and should be stored in a file with restricted access, however, it must be readable by nginx’s master process. 
+
+### Load balancing with NGINX
+
+In addition to being a web and cache server, NGINX is also a capable load balancer. Its configuration style is flexible but somewhat nonobvious.
+
+Use the `upstream` module to create named group of servers. For example:
+
+```
+upstream admin-servers {
+    server web1.admin.com:8080 max_fails=2; # NGINX remove server from pool after 2 failed attempts to connect
+    server web2.admin.com:8080 max_fails=2;
+}
+```
+
+`upstream` groups can be referenced from virtual host definitions. In particular, they can be used as proxying destinations, just like hostnames:
+
+```
+http {
+    server {
+        server_name admin.com www.admin.com;
+        location / {
+            proxy_pass http://admin-servers;
+            health_check interval=30 fails=3 passes=1 uri=/health_check match=admin-health;
+        }
+    }
+
+    match admin-health {
+        status 200;
+        header Content-Type: text/html;
+        body ~ "Ikizo senpai, READDDDY!";
+    }
+}
+
+Here, traffic for admin.com and www.admin.com is farmed out to the web1 and web2 servers in round robin order.
+
+This configuration also sets up health checks for the back-end servers. Checks are performed every 30 seconds (interval=30) against each server at the /health_check endpoint (uri=/health_check). NGINX will mark the server down if the health check fails on three consecutive attempts (fails=3), but will add the server back to the rotation if it succeeds just once (passes=1).
+
+The `match` keyword is peculiar to NGINX. It dictates the conditions under which the health check is considered successful.
+
+## HAProxy
+
+HAProxy is the most widely used open source load-balancing software. It proxies HTTP and TCP, supports sticky sessions to pin a given client to a specific web server, and offer advanced health-checking capabilities.
+
+HAProxy's configuration is usually contained in a single file, `/etc/haproxy/haproxy.cfg` on Debian and RHEL. 
+
+The following simple example configuration sets HAProxy to listen on port 80 and distribute requests in a round robin fashion between two web servers, web1 and web2, on port 8080.
+
+```
+global
+    daemon
+    maxconn 5000
+defaults
+    mode http
+    timeout connect 5000  # milliseconds
+    timeout client 10000
+    timeout server 10000
+frontend http-in
+    bind *:80
+    default_backend webservers
+
+backend webservers
+    balance roundrobin
+    server web1 web1.admin.com:8080 check
+    server web2 web2.admin.com:8080 check
+```
+
+![ha-proxy](./data/ha-proxy.png)
+
+`frontend` dictates how HAProxy will receive requests from clients: which addresses and ports to use, what types of traffic to serve, and other client-facing considerations. `backend` configures the set of servers that actually process requests. Mutliple frontend/backend pairs can exist in a single configuration, allowing HAProxy to service multiple sites.
+
+### Health checks
+
+HAProxy’s status-check feature performs regular HTTP requests to determine the health of each server. If a server fails a status check (by returning anything other than status 200), then HAProxy removes the errant server from the pool.
+
+```
+backend webservers
+    balance roundrobin
+    option httpchk GET /
+    server web1 web1.admin.com:8080 check inter 30000
+    server web2 web2.admin.com:8080 check inter 30000
+```
+
+Well-constructed web applications commonly expose a health-check endpoint that performs a thorough probe of the application to determine its true health. These checks may include verification of database or cache connectivity as well as performance monitoring.
+
+### Server statistics
+
+HAProxy offers a convenient web interface that displays server stats, much like mod_status in Apache. HAProxy’s version shows the state of each server in the pool and lets you manually enable and disable servers as needed.
+
+```
+listen stats :8000
+    mode http
+    stats enable
+    stats hide-version
+    stats realm HAProxy\ Statistics
+    stats uri /
+    stats auth myuser:passwd
+    stats admin if TRUE
+
+```
+
+### Sticky sessions
+
+HTTP is a stateless protocol, so each transaction is an independent session. From the perspective of the protocol, requests from the same client are unrelated.
+
+At the same time, most web applications need state to track user behavior over time. The classic example of state is a shopping cart. The web application needs some way to track the contents of the cart across multiple page views.
+
+Most web applications use cookies to track state. The web application generates a session for a user and puts the session ID in a cookie that is sent back to the user in the response header. Each time a client submits a request to the server, the cookie is sent with the request. The server use uses the cookie to recover the client's context.
+
+Ideally, web applications should store their state information in a persistent and shared medium such as a database. However, some poorly behaved web applications keep their session data locally, in the server's memory or on its local disk. When placed behind a load balancer, these applications break because a single client’s requests might be routed to multiple servers, depending on the vagaries of the load balancer’s scheduling algorithm.
+
+To address this issue, HAProxy can insert a cookie of its own into responses, a feature known as sticky sessions. Any future requests from the same client will include the cookie. HAProxy can use the value of the cookie to route the request to the same server that handled the initial request.
+
+```
+backend webservers
+    balance roundrobin
+    option httpchk GET /
+    cookie SERVERNAME insert httponly secure
+    server web1 web1.admin.com:8080 check inter 30000
+    server web2 web2.admin.com:8080 check inter 30000
+```
+
+The `cookie` directive tells HAProxy to insert a cookie named `SERVERNAME` into the response. The `insert` keyword tells HAProxy to insert the cookie if it doesn’t already exist. The `httponly` keyword tells the client’s browser to send the cookie only with HTTP requests, not with JavaScript requests. The `secure` keyword tells the client’s browser to send the cookie only over HTTPS connections.
+
+### TLS termination
+
+HAProxy versions 1.5 and later include TLS support. A common configuration is to terminate TLS at the load balancer and then proxy the request to the web server over plain HTTP.
+This approach offloads the CPU-intensive TLS encryption and decryption from the web server to the load balancer, which is usually a more powerful machine. It also reduces the number of TLS certificates that need to be managed.
+
+```
+frontend https-in
+    bind *:443 ssl crt /etc/ssl/certs/admin.com.pem
+    default_backend webservers
+```
+
+Apache and NGINX require the private key and certificate to be in separate files in PEM format, but HAProxy expects both components to be present in the same file. You can simply concatenate the separate files to create a composite file:
+
+```
+cat /etc/ssl/{private/admin.com.key,certs/admin.com.crt} > /etc/ssl/certs/admin.com.pem
+chmod 400 /etc/ssl/certs/admin.com.pem
+```
+
+Since the private key is part of the composite file, ensure that the file is owned by root and is not readable by any other user.
+
+## Recommends:
+
+- [developers.google.com](https://developers.google.com/web/fundamentals) : Google's web fundamentals
+- [https://wiki.mozilla.org/Security/Server_Side_TLS](https://wiki.mozilla.org/Security/Server_Side_TLS) : Mozilla's TLS configuration generator
