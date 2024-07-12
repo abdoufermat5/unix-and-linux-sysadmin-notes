@@ -475,6 +475,7 @@ http {
         body ~ "Ikizo senpai, READDDDY!";
     }
 }
+```
 
 Here, traffic for admin.com and www.admin.com is farmed out to the web1 and web2 servers in round robin order.
 
