@@ -6,7 +6,7 @@ Data storage systems are looking more and more like a giant set of Lego blocks t
 
 Mechanical hard drives remain a popular storage medium when capacity is the most important consideration, but solid state drives (SSDs) are preferred when performance-sensitive applications. Caching systems, both software and hardware, help combine the best features these storage types.
 
-Running on top of real and virtual hardware are a variety of software components that mediate between the raw storage devices and the filesystem hierarchy seen by users. These components include device drivers, partitioning conventions, RAID implementations, logical volume v$managers, systems for virtualizing disks over a network, and the filesystem implementations themselves.
+Running on top of real and virtual hardware are a variety of software components that mediate between the raw storage devices and the filesystem hierarchy seen by users. These components include device drivers, partitioning conventions, RAID implementations, logical volume managers, systems for virtualizing disks over a network, and the filesystem implementations themselves.
 
 ## Just want to add a disk
 
@@ -14,7 +14,7 @@ You want to install a hard disk and make it accessible through the filesystem. S
 
 ### Linux recipe
 
-First, run `lsblk` to list the system's disk and identify the new drive or `lsblk -o +MODEL,SERIAL` to get more details. Once you know which device file refers to the new disk (assume it's **/dev/sdb**), install a partition on the disk. Several commands and utilities can do this, including `fdisk`, `parted`, `gparted`, `cfdisk`, and `sfdisk`. Here's an example using `fdisk`:
+First, run `lsblk` (for list block devices) to list the system's disk and identify the new drive or `lsblk -o +MODEL,SERIAL` to get more details. Once you know which device file refers to the new disk (assume it's **/dev/sdb**), install a partition on the disk. Several commands and utilities can do this, including `fdisk`, `parted`, `gparted`, `cfdisk`, and `sfdisk`. Here's an example using `fdisk`:
 
 ![fdisk-recipe](./data/fdisk-recipe.png)
 
@@ -209,6 +209,17 @@ Exhibit A shows a typical set of software components that can mediate between a 
 ![pv-vg-lv](https://www.sysonion.de/wp-content/uploads/2019/01/LVM-Schaubild.jpg)
 
 - **RAID array** (Redundant Array of Independent/Inexpensive Disks) combines multiple storage devices into one virtualized device. RAID can provide data redundancy (protection against data loss) and/or increase data throughput.
+
+| RAID Level | Min Disks | Description | Advantages | Disadvantages |
+|------------|-----------|-------------|------------|---------------|
+| RAID 0 | 2 | Striping without parity | High performance, full capacity | No fault tolerance |
+| RAID 1 | 2 | Mirroring | Simple, good redundancy | 50% capacity loss |
+| RAID 5 | 3 | Striping with distributed parity | Good balance of performance and redundancy | Write performance hit |
+| RAID 6 | 4 | Striping with double distributed parity | Can survive two disk failures | More expensive, worse write performance |
+| RAID 10 | 4 | Striped set of mirrors | High performance and good redundancy | 50% capacity loss |
+
+These RAID levels are predefined standards. Users choose the appropriate level based on their needs for performance, redundancy, and storage capacity.
+
 - **Filesystem** mediates between the raw bag of blocks presented by a partition, RAID array, or logical volume and the standard filesystem interface expected by programs: */var/spool/mail*, UNIX file types, permissions, and so on.
 
 ### Linux device mapper
@@ -217,4 +228,14 @@ The Linux device mapper is a kernel-level framework that provides a generic way 
 
 ### Partitioning a disk
 
-Partitioning a disk is the process of dividing it into smaller sections called partitions. Each partition acts like an independent storage device and has its own device file. 
+Partitioning a disk is the process of dividing it into smaller sections called partitions. Each partition acts like an independent storage device and has its own device file.
+
+A few years ago it was impossible to partition a logical volume or RAID, only disks can be partitioned. You could of course put individual disk partitions under the control of a RAID controller or logical volume manager. Modern systems now allow partitioning, RAID, and LVM to be applied at any level.
+
+In fact, partitioning is less desirable than logical volume management in most respects. It’s coarse and brittle and lacks features such as snapshot management. Partitioning decisions are difficult to revise later. The only notable advantages of partitioning over logical volume management are its simplicity and the fact that Windows and PC BIOSs understand and expect it.
+
+All systems have a root “partition” that includes / and most of the local host’s configuration data. In theory, everything needed to bring the system up to single-user mode is part of the root partition. Various subdirectories (most commonly /var, /usr, /tmp, /share, and /home) can be broken out into their own partitions or volumes. Most systems also have at least one swap area.
+
+**Traditional data disk partitioning scheme (Linux device names):**
+![trad-part-scheme](./data/trad-part-scheme.png)
+
