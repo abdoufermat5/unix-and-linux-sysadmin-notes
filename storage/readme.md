@@ -237,5 +237,6 @@ In fact, partitioning is less desirable than logical volume management in most r
 All systems have a root “partition” that includes / and most of the local host’s configuration data. In theory, everything needed to bring the system up to single-user mode is part of the root partition. Various subdirectories (most commonly /var, /usr, /tmp, /share, and /home) can be broken out into their own partitions or volumes. Most systems also have at least one swap area.
 
 **Traditional data disk partitioning scheme (Linux device names):**
+
 ![trad-part-scheme](./data/trad-part-scheme.png)
 
