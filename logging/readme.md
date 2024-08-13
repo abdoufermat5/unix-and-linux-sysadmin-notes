@@ -101,7 +101,7 @@ Archived and active journals take up 320.0M in the file system.
 The `--list-boots` option shows a sequential list of system boots with numerical identifiers. The most recent boot is always 0. The dates at the end of the line show the time stamps of the first and last messages generated during that boot.
 
 ```bash
-$ jjournalctl --list-boots | tail -5
+$ journalctl --list-boots | tail -5
  -4 10797e174df7473f816f30bd2eeb4a57 Mon 2024-03-18 14:40:30 CET—Mon 2024-03-18 14:49:42 CET
  -3 237e3a7ee5ed4d9b89358e24fd4d6a8e Mon 2024-03-18 14:50:19 CET—Thu 2024-03-21 03:08:06 CET
  -2 93dcd912589c43d0bd74dbc49af29212 Thu 2024-03-21 09:00:35 CET—Fri 2024-03-22 05:58:45 CET
