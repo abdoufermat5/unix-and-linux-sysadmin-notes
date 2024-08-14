@@ -7,7 +7,7 @@
 A mail system consists of several distinct components:
 
 - **User Agents (UA)**: The user agent is the interface between the user and the mail system. It allows the user to read, compose, and send mails.
-- **Mail submission agent (MSA)**: Accepts outgoing mail from MUAs, grooms it, and submits it to the mail transfer agent (MTA).
+- **Mail submission agent (MSA)**: Accepts outgoing mail from UAs, grooms it, and submits it to the mail transfer agent (MTA).
 - **Mail transfer agent (MTA)**: The MTA routes messages among mail servers.
 - **Delivery agent (DA)**: The delivery agent delivers incoming mail to the recipient's mailbox.
 - **Access agent (AA)**: The optional access agent connects the user agent to the mailbox.
