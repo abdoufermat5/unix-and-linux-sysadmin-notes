@@ -240,3 +240,53 @@ All systems have a root “partition” that includes / and most of the local ho
 
 ![trad-part-scheme](./data/trad-part-scheme.png)
 
+Some guide:
+
+- Putting `/tmp` on a separate filesystem limits temporary files to a finite size and saves you from having to back them up.
+
+- It’s useful to put users’ home directories on a separate partition or volume. Even if the root partition is corrupted or destroyed, user data has a good chance of remaining intact.
+- Splitting swap space among several physical disks can potentially increase performance, although with today’s cheap RAM it’s usually better not to swap at all.
+  
+### Traditional partitioning
+
+Despite the universal availability of logical volume managers, some situations still require or benefit from traditional partitioning.
+
+- Only two partitioning scheme are used these days: MBR and GPT.
+- Partitions have a defined location on the disk, so they guarantee locality of reference. Logical volumes do not (at least, not by default). This means data in a logical volume might be spread out more on the physical disk(s). By keeping data in a defined area, partitions can potentially offer slightly better performance, especially if they're placed on the faster outer tracks of the disk. This consideration is mainly relevant for systems using traditional HDDs and where disk I/O is a significant performance factor.
+- RAID systems use disks or partitions of matched size. For example, if you have three disks of 1TB, 1.5TB, and 2TB, a typical RAID setup might only use 1TB from each disk. This ensures that data can be distributed evenly across all drives in the array. For the extra space, you can isolate it in a separate /spare partition for data infrequently accessed (suitable to not break the RAID performance). If the data on this extra partition is frequently accessed, it can slow down access to the RAID array (disk heads need to move back and forth between RAID portion and spare portion).
+
+### MBR partitioning
+
+Master Boot Record partitioning is an old Microsoft standard that dates back to the 1980s. It’s a cramped and ill-conceived format that can’t support disks larger than 2TB. Who knew disks could ever get that big?
+
+MBR offers no advantages over GPT except that it’s the only format from which old PC hardware can boot Windows.
+
+The MBR label occupies a single 512-byte disk block, most of which is consumed by boot code. Only enough space remains to define 4 partitions (termed `primary`). You can define one of those four to be an extended partition (it contains it's own subsidiary partition table). The windows partitioning system lets one partition be marked `active` and boot loaders look for this one to load the OS from it. Each partition also has a one-byte type attribute that is supposed to signal the partition’s contents.
+
+The MS-DOS command for hard disks partitioning was called fdisk (now `diskpart` in modern windows), still used (at least the naming) on most MBR supported systems.
+
+### GPT: GUID partition tables
+
+Intel’s extensible firmware interface (EFI) project replaced the rickety conventions of PC BIOSs with a more modern and functional architecture. EFI (now UEFI) firmware is now standard for new PC hardware, and EFI’s partitioning scheme has gained universal support among operating systems. 
+
+The EFI partitioning scheme, known as a “GUID partition table” or GPT, removes the obvious weaknesses of MBR. It defines only one kind of partition (no more “logical partitions in the extended partition”), and you can create arbitrarily many of them. Each partition has a type specified by a 16-byte ID code (a globally unique ID, or GUID) that requires no central arbitration.
+
+### Linux and FreeBSD partitioning
+
+For Linux use `parted` or `gparted` (the GUI) and for FreeBSD you can use `gpart`.
+
+## Logical Volume Management (LVM)
+
+Imagine a world in which you don’t know exactly how large a partition needs to be. Six months after creating the partition, you discover that it is much too large, but that a neighboring partition doesn’t have enough space. Sound familiar? A logical volume manager lets you reallocate space dynamically from the greedy partition to the needy partition (without giving a damn on where it's neighboring or not!!!!!).
+
+Logical volume management is essentially a supercharged and abstracted version of disk partitioning. It groups individual storage devices into `Volume Groups`. The blocks in a group can then be allocated to `logical volumes`, which are represented by block device files and act like disk partitions.
+
+Logical volumes are more flexible and powerful than disk partitions.
+
+![logical-vol-capacities](./data/logical-vol-capacities.png)
+
+There are three types of LVM: `linear` volumes, `striped` and `mirrored` volumes.
+
+- `Linear Volumes`: Data is written sequentially across one or more physical volumes. (No redundancy, No performance improvements but easy and simple)
+- `Striped Volumes`: Data is divided into chunks and distributed across multiple physical volumes. (No redundancy, performance improved)
+- `Mirrored Volumes`: Data is duplicated across two or more physical volumes. (Redundancy, performance improved, but usable capacity is divided by `N`)
