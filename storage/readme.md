@@ -61,20 +61,20 @@ Only two manufacturers of hard drives remain: Seagate and Western Digital. You m
 
 Brands segment their hard disk offerings into a few general categories:
 
-- **Value drives:** Performance isn’t a priority, but it’s usually decent. 
+- **Value drives:** Performance isn’t a priority, but it’s usually decent.
 - **Mass-market performance drives:** They perform notably better than value drives on most benchmarks. As with value drives, firmware tuning emphasizes single-user patterns such as large sequential reads and writes.
 - **NAS drives:** NAS stands for “network-attached storage,” but these drives are intended for use in all sorts of servers, RAID systems, and arrays--anywhere that multiple drives are housed and accessed together.
 - **Enterprise drives:** expensive non-SATA interfaces and uncommon features such as 10000+ RPM spindle speeds.
 
 ### Solid state disks
 
-SSDs spread reads and writes across banks of flash memory cells, which are individually rather slow in comparisson to modern hard disks. But because of parallelism, the SSD as a whole meets or exceeds the bandwidth of a traditional disk. 
+SSDs spread reads and writes across banks of flash memory cells, which are individually rather slow in comparisson to modern hard disks. But because of parallelism, the SSD as a whole meets or exceeds the bandwidth of a traditional disk.
 
 **flash memory types:**
 
 SSDs are constructed from several types of flash memory: SLC, MLC, TLC, and QLC. The main difference between these types is the number of bits stored in each cell. SLC stores one bit per cell, MLC stores two, TLC stores three, and QLC stores four. The more bits per cell, the cheaper the flash memory is to produce, but the slower and less reliable it is.
 
-**Page clusters and pre-erasing:** 
+**Page clusters and pre-erasing:**
 
 Unlike hard drives where you can just overwrite data, flash memory has to be erased before you can put new data on it. SDs can't erase individual bits of information. They erase in chunks called clusters. Pre-erasing is the process of erasing sections of an SSD's memory in advance so that new data can be written quickly without having to wait for erasing to happen.
 
@@ -96,7 +96,7 @@ The storage industry has transitioned to 4KiB blocks (Advanced Format) for effic
 
 ### SATA
 
-Serial ATA (SATA) is the most common interface for hard drives. SATA has native support for hot swapping and optional command queueing. 
+Serial ATA (SATA) is the most common interface for hard drives. SATA has native support for hot swapping and optional command queueing.
 
 ### PCI Express (PCIe)
 
@@ -147,7 +147,7 @@ The way a disk is attached to the system depends on the interface. The rest is a
 
 ### Disk device files
 
-A newly added disk is represented by device files in **/dev**. 
+A newly added disk is represented by device files in **/dev**.
 
 **Disk Device Naming Standards in Linux and FreeBSD:**
 
@@ -173,7 +173,7 @@ A newly added disk is represented by device files in **/dev**.
    - SCSI disks use /dev/da0, /dev/da1, etc.
    - Supports GEOM labels for persistent naming.
 
-use `parted -l` to list the sizes, partition tables, model numbers, and manufacturers of all disks attached to the system. 
+use `parted -l` to list the sizes, partition tables, model numbers, and manufacturers of all disks attached to the system.
 
 ### ATA secure erase
 
@@ -267,7 +267,7 @@ The MS-DOS command for hard disks partitioning was called fdisk (now `diskpart` 
 
 ### GPT: GUID partition tables
 
-Intel’s extensible firmware interface (EFI) project replaced the rickety conventions of PC BIOSs with a more modern and functional architecture. EFI (now UEFI) firmware is now standard for new PC hardware, and EFI’s partitioning scheme has gained universal support among operating systems. 
+Intel’s extensible firmware interface (EFI) project replaced the rickety conventions of PC BIOSs with a more modern and functional architecture. EFI (now UEFI) firmware is now standard for new PC hardware, and EFI’s partitioning scheme has gained universal support among operating systems.
 
 The EFI partitioning scheme, known as a “GUID partition table” or GPT, removes the obvious weaknesses of MBR. It defines only one kind of partition (no more “logical partitions in the extended partition”), and you can create arbitrarily many of them. Each partition has a type specified by a 16-byte ID code (a globally unique ID, or GUID) that requires no central arbitration.
 
@@ -290,3 +290,105 @@ There are three types of LVM: `linear` volumes, `striped` and `mirrored` volumes
 - `Linear Volumes`: Data is written sequentially across one or more physical volumes. (No redundancy, No performance improvements but easy and simple)
 - `Striped Volumes`: Data is divided into chunks and distributed across multiple physical volumes. (No redundancy, performance improved)
 - `Mirrored Volumes`: Data is duplicated across two or more physical volumes. (Redundancy, performance improved, but usable capacity is divided by `N`)
+
+### Linux logical volume management
+
+Linux's volume manager, called LVM2, is essentially a clone of HP-UX's volume manager. Here a summary of commands:
+
+![lvm-commands-linux](./data/lvm-commands-linux.png)
+
+The top-level architecture of LVM is that individual disks and partitions (physical volumes) are gathered into storage pools called volume groups. Volume groups are then subdivided into logical volumes, which are the block devices that hold filesystems.
+
+A physical volume needs to have an LVM label applied with `pvcreate`.
+
+LVM uses "physical volumes" as a generic term for any block storage, whether it's a whole disk, partition, or RAID array, abstracting away the physical details.
+
+It's also possible to control LVMs with simple `lvm` command (and its various subcommands).
+
+A linux LVM configuration proceeds in a few distinct phases:
+
+- Creating (defining, really) and initializing physical volumes
+- Adding the PVs to a volume group
+- Creating logical volumes on the VG
+
+In the following example, we set up a 1TB hard disk (**/dev/sdb** and we assume it's already partitioned with all space in a single partition **/dev/sdb1**). Although using an unpartitioned disk with LVM is possible, creating a partition is recommended for better compatibility across different software and operating systems without impacting performance.
+
+```bash
+$ sudo pvcreate /dev/sdb1
+Physical volume "/dev/sdb1" successfully created
+$ sudo vgcreate DEMO /dev/sdb1
+Volume group "DEMO" successfully created
+$ sudo lvcreate -L 100G -n web1 DEMO
+Logical volume "web1" created successfully
+```
+
+Here's an ouptput of the `vgdisplay` command;
+
+![vgdisplay-out](./data/vgdisplay-out.png)
+
+- **VG Access:** read/write - The volume group can be both read from and written to.
+- **VG Status:** resizable - The size of this volume group can be changed.
+- **Open LV:** 0 - There are currently no open logical volumes in this group.
+- **Max PV:** 0 - There's no limit to the number of physical volumes that can be added.
+- **Cur PV:** 1 - There is currently one physical volume in this group.
+- **Act PV:** 1 - One physical volume is active.
+- **VG Size:** 1000.00 GiB - The total size of the volume group is about 1 terabyte.
+- **PE Size:** 4.00 MiB - Each Physical Extent (the smallest unit of storage allocation) is 4 megabytes.
+- **Total PE:** 255990 - The total number of physical extents in the volume group.
+- **Alloc PE / Size:** 0 / 0 - No physical extents have been allocated yet.
+- **Free PE / Size:** 255990 / 1000.00 GiB - All physical extents are free, equaling the total size.
+
+After the logical volume is created we can access it through **/dev/DEMO/web1**. We can for instance create a file system and mount it.
+
+```bash
+$ sudo mkfs /dev/DEMO/web1
+$ sudo mkdir /mnt/web1
+$ sudo mount /dev/DEMO/web1 /mnt/web1
+```
+
+*snapshots*
+
+LVM snapshots, while useful for creating temporary backups, have limitations as a version control method due to their fixed size and potential for corruption if they run out of space, making them less versatile than similar features in ZFS or Btrfs.
+
+To create **/dev/DEMO/web1-snap** as a snapshot of **/dev/DEMO/web1**, we would use the following command:
+
+```bash
+$ sudo lvcreade -L 100G -s -n web1-snap DEMO/web1
+Logical volume "web1-snap" created
+```
+
+Note that the snapshot has its own name and that the source of the snapshot must be specified as `volume_group/volume`.
+
+To check on the staus of your snapshots, run **lvdisplay**. If **lvdisplay** tells you that a snapshot is "inactive", that means it has run out of space and should be deleted. There's little you can do with a snapshot once it reaches this point!
+
+*Filesystem resizing*
+
+Filesystem overflows are more common than disk crashes, and one advantage of logical volumes is that they’re much easier to juggle and resize than are hard partitions. 
+
+Suppose that in our example **/mnt/web1** has grown more than we predicted and needs another 100GB of space. We first check the VG to be sure additional space is available.
+
+![vgdisplay-out2](./data/vgdisplay-out2.png)
+
+200GB already consumed (100GB for the original filesystem and 100GB for the snapshot). 800GB available!
+
+```bash
+$ sudo umount /mnt/web1 # we unmount the filesystem first
+$ sudo lvchange -an DEMO/web1 # needed to deactivate the volume for resizing purpose
+$ sudo lvresize -L +100G DEMO/web1 # increase web1 to 200GB
+Size of logical volume DEMO/web1 changed from 100.00 GiB (25600 extents) to 200.00 GiB (51200 extents).
+Logical volume DEMO/web1 resized successfully.
+$ sudo lvchange -ay DEMO/web1 # activate again
+```
+
+After the volume resize operation we can now resize the filesystem with the `resize2fs` (it will automatically determine the size of new filesystem from the volume).
+
+```bash
+sudo resize2fs /dev/DEMO/web1
+```
+
+Examining the output of `df` will show changes:
+
+```bash
+df -h /mnt/web1
+```
+
