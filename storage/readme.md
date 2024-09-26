@@ -389,6 +389,229 @@ sudo resize2fs /dev/DEMO/web1
 Examining the output of `df` will show changes:
 
 ```bash
-df -h /mnt/web1
+$ sudo mount /dev/DEMO/web1 /mnt/web1
+$ df -h /mnt/web1
+Filesystem              Size        Used        Avail       Use%        Mounted on
+/dev/mapper/DEMO-web1   197G        60M         187G        1%          /mnt/web1
 ```
+
+It works same for other filesystems! FOr example for XFS (default for RedHat and Centos) use `xfs_growfs`, use `growfs` in FreeBSD (with UFS filesystems). It's impossible to reduce size on in XFS or UFS, you basically need to create new filesystem with smaller size and copy content!!!!
+
+**It’s worth noting that “disks” you allocate and attach to virtual machines in the cloud are essentially logical volumes, although the volume manager itself lives elsewhere in the cloud.**. These volumes are usually resizable through the cloud provider's management console or command-line utility.
+
+## RAID: Redundant Arrays of Inexpensive Disks
+
+EVen with backups, the consequence of a disk failure on a server can be disastrous. RAID is a system that distributes or replicates data across multiple disks.
+
+RAID can be implemented by dedicated hardware that presents a group of hard disks to the OS as a single composite drive. It can also be implemented simply by OS's reading or writing multiple disks according to the rules of RAID.
+
+### Software vs Hardware RAID
+
+Hardware RAID isn't necessarily faster than software RAID because disk speed is the primary bottleneck in RAID systems. Hardware RAID has been more prevalent due to historical lack of software alternatives and its ability to use nonvolatile memory for write buffering (it can quickly store this in its buffer and immediately signal to the system that the write is complete, which is much faster than waiting for the data to be written completely to the physical disks).
+
+This buffering also protect against a potential corruption called "RAID 5 write hole".
+
+### RAID levels
+
+Replication assumes two basic forms: mirroring, in which data blocks are reproduced bit-for-bit on several different drives, and parity schemes, in which one or more drives contain an error-correcting checksum of the blocks on the remaining data drives.
+Mirroring is faster but consumes more disk space. Parity schemes are more disk-space-efficient but have lower performance.
+
+RAID is traditionally described in terms of "levels" that specify the exact details of the parallelism and redundancy implemented by an array.
+
+---
+
+*For the illustrations, numbers identify stripes and the letters a, b, and c identify data blocks within a stripe. Blocks marked p and q are parity blocks.*
+
+---
+
+Linear mode or JBOD (Just a Bunch Of Disks) is not even a real RAID level yet implemented by every RAID controller. It's just a concatenation of disks into a single big one. Nowadays you better have to use LVM for JBOD rather than a RAID system.
+
+RAID 0 stripes data alternately among the disks in the pool. Sequential reads and writes are therefore spread among several disks, decreasing write and access times.
+
+![raid-0](./data/raid-0.png)
+
+RAID 1 is mirroring! Writes are duplicated to 2 or more drives simultaneously. Slower writes but better reads (comparable to  RAID 0).
+
+![raid-1](./data/raid-1.png)
+
+RAID levels 1+0 and 0+1 are stripes of mirrors or mirrors of stripes. The goal is to obtain the performance of RAID 0 and redundancy of RAID 1.
+
+![raid-10-01](./data/raid-10-01.png)
+
+RAID 5 stripes both data and parity information, adding redundancy while simultaneously improving read performance. It's more disk-space-efficient than other levels!
+
+![raid-5](./data/raid-5.png)
+
+RAID 6 is similar to 5 but has two parity disks. It can then withstand the complete failure of 2 drives without losing data. RAID 6 requires at least 4 devices.
+
+![raid-6](./data/raid-6.png)
+
+ZFS AND Btrfs are advanced file systems that combine RAID functionality, logical volume management, and file system features. They support various RAID-like configurations including striping, mirroring, and parity-based setups similar to RAID 5 and 6.
+
+For simple striped and mirrored configurations outside the context of one of these filesystems, Linux gives you a choice between a dedicated RAID system (`md`) and the LVM.
+
+### Disk failure recovery
+
+Unlike JBOD and RAID 0, other RAID configurations allow continued operation in degraded mode when failures occur, though prompt disk replacement is essential to restore redundancy. Replacing a failed disk in a RAID array typically involves swapping in a new disk and initiating a time-consuming resynchronization process that can impact performance. To minimize downtime and vulnerability, many RAID implementations support "hot" spares that automatically replace failed disks and begin resynchronization immediately, a feature recommended for standard use where available.
+
+### Drawbacks of RAID 5
+
+RAID 5, while popular, has significant limitations including its inability to replace regular backups and its vulnerability to data loss from various threats beyond single disk failures. Its write performance is compromised due to the need for multiple read and write operations for each data update, resulting from its distributed parity system. RAID 5 is susceptible to the "write hole" problem, where data and parity blocks can become desynchronized due to unexpected interruptions, potentially leading to data corruption that only becomes apparent during disk failure and reconstruction. To mitigate these issues, solutions such as ZFS's RAID-Z implementation and regular "scrubbing" of parity data have been developed, though the latter requires consistent manual activation.
+
+### mdadm: Linux software RAID
+
+*Creating an array*
+
+The following scenario configures a RAID 5 array composed of 3 identical 1TB hard disks. Although `md` can use raw disks as components, we prefer to give every disk a partition table for consistency, so we start by running `gparted`, creating GPT partition table on each disk and assigning all the disk's space to a single partition of type "Linux RAID" (just as reminder, not mandatory!).
+
+The following command builds a RAID 5 array from three whole-disk partitions:
+
+```bash
+$ sudo mdadm --create /dev/md/extra --level=5 --raid-devices=3 /dev/sdf1 /dev/sdg1 /dev/sdh1
+
+mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md/extra started.
+```
+
+The virtual file /proc/mdstat always contains a summary of md’s status and the status of all the system’s RAID arrays.
+
+
+## Filesystems
+
+Even after a hard disk has been conceptually divided into partitions or logical volumes, it is still not ready to hold files. All the abstractions and goodies described in [Chapter-5](../the-filesystem/readme.md) must be implemented.
+
+## Traditional filesystems: UFS, ext4, XFS
+
+These filesystems exemplify the old school approach in which volume management and RAID are implemented separately from the filesystem itself.
+
+Older filesystems were vulnerable to corruption during power interruptions, requiring fsck checks. Modern filesystems use journaling to prevent such corruption by logging changes before applying them.
+
+In most cases, only metadata changes are journaled. 
+
+From the Berkeley Fast File System (FFS) to the modern ext4, the basic structure of UNIX filesystems has remained remarkably consistent. The main differences between these filesystems are in their handling of large files, large directories, and journaling.
+
+### Filesystem terminology
+
+Most of the filesystems use the same terminology. `Inodes` (probably short for “index nodes”) are fixed-length table entries, each of which describes a file or directory. Inodes were originally preallocated at the time a filesystem was created, but modern filesystems allocate them dynamically as needed. You can see the number of inodes in a filesystem with the `df -i` command or for a specific directory with `ls -i`.
+
+Inodes are the “things” pointed to by directory entries. When you create a hard link to an existing file, you create a new directory entry, but you do not create a new inode.
+
+A superblock is a record that describes the characteristics of the filesystem (length of a disk block, size and location of the inode tables, the disk block map, and so on). The superblock is usually duplicated in several places on the disk to guard against corruption.
+
+The kernel caches disk blocks to increase efficiency. Caches are normally not 'write-through', meaning that the kernel can acknowledge a write operation before the data is actually written to disk. This can lead to data loss if the system crashes before the data is written.
+
+`sync` operation is used to flush the cache to disk. Some filesystem do this automatically after a certain amount of time or after a certain number of writes. Modern filesystems use journaling to prevent data loss in the event of a crash.
+
+Filesystems use a disk block map to track free blocks and a block usage summary for allocated blocks, enabling efficient file storage and retrieval. 
+
+![fs-space-management](./data/fs-space-management.png)
+
+### Filesystem formatting
+
+Filesystem formatting is the process of creating a filesystem on a disk partition. The `mkfs` command is used to format a disk partition with a specific filesystem type.
+
+```bash
+$ sudo mkfs.fstype [-L lable] [other_options] device
+```
+
+The `-L` option is used to assign a label to the filesystem such as 'root', 'extra', 'spare' etc.
+
+### fsck: check and repair filesystems
+
+Because of block buffering and the fact that disk drives are not really transactional devices, filesystem data structures can potentially become self-inconsistent.
+
+`fsck` carefully inspect all data structures and walk into the allocation tree of every file. It's purely heuristic!
+
+Disk are normally fscked automatically at boot time if they are listed in the system's **/etc/fstab** file. The fstab file has legacy "fsck sequence" fields thqt ordered and parallelized filesystems checks.
+
+We can force fsck on linux ext-family filesystems to recheck after they have been remounted a certain number/period of time.
+Nowadays on desktop we set the max mount count to infinite (-1) because the system mounts frequently the filesystem.
+
+If things go really wrong better to dd the entire disk first to a backup file or backup disk.
+
+Most filesystems create a `lost+found` directory at the root of each filesystem in which fsck can deposit files whose parent directory cannot be determined. THe `lost+found` directory has some extra space preallocated so that fsck can store orphaned files there without having to allocate additional 
+directory entries on an unstable filesystem. (Use `mklost+found` to recreate the directory if inadvertently deleted!)
+
+Since the name given to a file is recorded only in the file’s parent directory, names for orphan files are not available and so the files placed in `lost+found` are named with their inode numbers.
+The inode table does record the UID of the file’s owner, however, so getting a file back to its original owneris relatively easy.
+
+### Filesystem mounting
+
+Mounting is the process of attaching a filesystem to a directory in the system's directory tree. The `mount` command is used to mount a filesystem.
+
+```bash
+$ sudo mount [-t fstype] [-o options] device mountpoint
+```
+For example to mount a filesystem in the partition represented by the device `/dev/sdb1` to the directory `/mnt/extra`:
+
+```bash
+$ sudo mount /dev/sdb1 /mnt/extra
+```
+Most of the time the filesystem is automatically mounted at boot time by the system's init scripts. The filesystems to be mounted at boot time are listed in the system's `/etc/fstab` file.
+
+To mount all local 'ext4' filesystems:
+
+```bash
+$ sudo mount -at ext4
+```
+
+The `mount` command reads **fstab** sequentially. Therefore, if you have a filesystem that depends on another filesystem, the filesystem it depends on must be listed first in **fstab**.
+
+Use `umount` to unmount a filesystem. Beware that the filesystem must not be in use (files open, processes running, etc.) before it can be unmounted.
+
+### USB drive mounting
+
+With the dynamic device management philosophy by OS, USB drives are just one more type of device that shows up or disappear without warning.
+
+From the perspective of storage management, the issues are two fold:
+
+- Getting the kernel to recognize a device and assign a device file to it,
+- Finding out what assignment has been made (in /dev)
+
+### Swapping recommendations
+
+The proper amount of swap space to allocate depends on how a machine is used. There is no penalty to overprovisioning except that you lose the extra disk space. We suggest half the amount of RAM as a rule of thumb, but never less than 2GB on a physical server.
+
+If a system will hibernate (personal machines, usually), it needs to be able to save the entire contents of memory to swap in addition to saving all the pages that would be swapped in normal operation. On these machines, increase the swap space recommended above by the amount of RAM.
+
+## Next gen filesystems: ZFS and BTRFS
+
+Although ZFS and Btrfs are usually referred to as filesystems, they represent vertically integrated approaches to storage management that include the functions of a logical volume manager and a RAID controller.
+
+### Copy-on-Write (CoW)
+
+When data needs to be updated, instead of modifying the existing data in place:
+
+- The filesystem makes changes to a copy of the data in memory.
+- It then writes this modified copy to a new, unused location on the disk.
+- The parent block that points to the modified data needs to be updated.
+- This continues up the chain, potentially all the way to the top of the filesystem structure.
+
+![cow](./data/cow.png)
+
+### Error detection
+
+ZFS and Btrfs use checksums to detect errors in data and metadata. When data is read, the checksum is recalculated and compared to the stored checksum. If they don't match, the filesystem knows that the data has been corrupted.
+
+### Performance
+
+ZFS and Btrfs are designed to take advantage of modern hardware, including multiple cores, large amounts of RAM, and SSDs. They are optimized for performance and can take advantage of the latest hardware features.
+
+## ZFS
+
+ZFS is a combined filesystem, volume manager, and RAID controller. ZFS was introduced in 2005 as a component of OpenSolaris. 
+
+### ZFS on Linux
+
+ZFS is available on Linux as a kernel module through the OpenZFS project (because the Sun Microsystems license, CDDL, is incompatible with the GPL). 
+
+### ZFS architecture
+
+![zfs-archi](./data/zfs-archi.png)
+
+- **Pool**: A pool is a collection of vdevs. A pool can have one or more vdevs. A ZFS “storage pool” is analogous to a “volume group”.
+- **vdev**: A vdev is a virtual device that can be a disk, a partition, a file, or a combination of these. A vdev can be a single disk, a mirror, a RAID-Z group, or a combination of these.
+- **RAID-Z**: RAID-Z is a data protection mechanism similar to RAID 5. It uses a variable number of disks for parity, depending on the RAID-Z level. RAID-Z levels include RAID-Z1 (similar to RAID 5), RAID-Z2 (similar to RAID 6), and RAID-Z3 (similar to RAID 7).
+
+### Example: disk addition
 
