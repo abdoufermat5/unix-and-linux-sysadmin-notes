@@ -615,3 +615,286 @@ ZFS is available on Linux as a kernel module through the OpenZFS project (becaus
 
 ### Example: disk addition
 
+Suppose you've added a new disk to your system and it shows up as '/dev/ada1'.
+
+First you have to add the disk to a new storage pool:
+
+```bash
+$ sudo zpool create demo ada1
+```
+
+well that's it! You can now use the pool as a normal filesystem. 
+
+```bash
+$ ls -a /demo
+```
+
+ZFS creates the pool "demo", creates a filesystem root inside it, and mounts it as `/demo`.
+
+### FIlesystems and properties
+
+ZFS filesystems are created with the `zfs create` command. You can set properties on a filesystem with the `zfs set` command.
+
+```bash
+$ sudo zfs create demo/home
+$ sudo zfs set compression=lz4 demo/home
+
+$ zfs list -r demo
+NAME         USED  AVAIL  REFER  MOUNTPOINT
+demo          24K  980G    24K  /demo
+demo/home     24K  980G    24K  /demo/home
+```
+
+The 'reservation' property can be used to reserve space for a filesystem. This is useful for ensuring that a filesystem always has enough space to write data.
+
+```bash
+$ sudo zfs set reservation=1G demo/home
+
+$ zfs list -r demo
+NAME         USED       AVAIL    REFER  MOUNTPOINT
+demo         1.00GB     979G     24K    /demo
+demo/home     24K       1024M    24K    /demo/home
+```
+### One filesystem per user
+
+ZFS filesystems are lightweight and can be created and destroyed quickly. This makes it easy to create a separate filesystem for each user on a system.
+
+```bash
+$ sudo zfs create demo/alice
+$ sudo zfs create demo/bob
+$ sudo zfs create demo/carol
+```
+Since snapshots are per filesystem, each user can have their own snapshots (at `~/.zfs`).
+
+
+### Snapshots and clones
+
+On the following example we create a snapshot of the `demo/alic` filesystem and then revert to the snapshot.
+
+```bash
+$ sudo touch /demo/alice/file1
+$ sudo zfs snapshot demo/alice@snap1
+$ sudo rm /demo/alice/file1
+$ sudo ls /demo/alice
+
+$ sudo ls /demo/alice/.zfs/snapshot/snap1
+file1
+$ sudo zfs rollback demo/alice@snap1
+$ sudo ls /demo/alice
+file1
+```
+
+Snapshots are read-only, they are not true filesystems. However, you can create a clone of a snapshot, which is a read-write filesystem that is an exact copy of the snapshot.
+
+```bash
+$ sudo zfs clone demo/alice@snap1 demo/alice-clone
+$ sudo ls /demo/alice-clone
+file1
+$ sudo touch /demo/alice-clone/file2
+$ sudo ls /demo/alice-clone
+file1 file2
+```
+
+### Raw volumes
+
+ZFS can also create raw volumes, which are block devices that can be used like any other block device.
+
+```bash
+$ sudo zfs create -V 1G demo/swap
+```
+
+This creates a 1GB raw volume called `demo/swap`. You can format it with a filesystem and mount it like any other block device. By default the raw volume is located at `/dev/zvol/demo/swap`.
+
+### Storage pool management
+
+Suppose we've 5 disks of 1TB each and we want to create a RAID-Z pool with them. We create a pool with 3 disks called 'monster' and then add the other 2 for mirroring.
+
+```bash
+$ sudo zpool create monster raidz1 /dev/ada1 /dev/ada2 /dev/ada3
+$ sudo zpool add monster -f mirror /dev/ada4 /dev/ada5
+
+$ zpool status monster
+
+pool: monster
+state: ONLINE
+scan: none requested
+config:
+
+NAME        STATE     READ WRITE CKSUM
+monster     ONLINE       0     0     0
+  raidz1-0  ONLINE       0     0     0
+    ada1    ONLINE       0     0     0
+    ada2    ONLINE       0     0     0
+    ada3    ONLINE       0     0     0
+  mirror-1  ONLINE       0     0     0
+    ada4    ONLINE       0     0     0
+    ada5    ONLINE       0     0     0
+
+errors: No known data errors
+```
+
+## Btrfs
+
+Oracle's Btrfs (B-tree filesystem) aimed to repeat many of ZFS's advances on the Linux platform.
+
+### Btrfs vs ZFS
+
+Btrfs is not a ZFS clone! you use `mount` command for example to mount a Btrfs volume just like those of other filesystem. There's no hierarchy between Btrfs volumes and subvolumes, a change need to be repeated on all of them individually.
+
+Btrfs storage pool can include only one group of disks in one particular configuration (e.g., RAID 5), whereas ZFS pools can include multiple disk groups as well as caching disks, intent logs, and hot spares.
+
+- Btrfs is the clear winner when it comes to changing your hardware configuration; ZFS didn’t even show up for this fight. You can add or remove disks at any time, or even change RAID type, and Btrfs redistributes existing data accordingly while remaining on-line. In ZFS, such changes are usually impossible without your dumping your data to external media and starting over.
+
+- Even without memory-intensive features (such as deduplication) enabled, ZFS functions best with a generous amount of RAM. 2GB is the recommended minimum. That’s a lot of memory for a virtual server.
+
+- ZFS’s ability to cache frequently read data on separate cache SSDs is a killer feature for many use cases, and one for which Btrfs currently has no answer.
+
+- the Btrfs implementations of parity raid (RAID 5 and 6) are not yet ready for production use.
+
+### Setup and storage conversion
+
+We're going to setup Btrfs for use on a set of two 1TB hard disks configured for RAID1(mirroring):
+
+```bash
+$ sudo mkfs.btrfs -L demo -d raid1 /dev/sdb /dev/sdc
+
+Label:              demo
+UUID:               
+Node size:          16384
+Sector size:        4096
+Filesystem size:    1.91TiB
+Block group profiles:
+  Data:             RAID1           1.00GiB
+  Metadata:         RAID1           1.00GiB
+  System:           RAID1           8.00MiB
+SSD detected:       no
+Incompat features:  extref, skinny-metadata
+Number of devices:  2
+Devices:
+   ID        SIZE  PATH
+    1     978.00GiB  /dev/sdb
+    2     978.00GiB  /dev/sdc
+
+$ sudo mkdir /mnt/demo
+$ sudo mount LABEL=demo /mnt/demo
+```
+
+It's simplest to use LABEL we assigned to the group instead of one of the component devices (like `/dev/sdb`).
+
+```bash
+// filesystem usage
+$ sudo btrfs filesystem usage /mnt/demo
+
+Overall:
+    Device size:                   1.91TiB
+    Device allocated:              4.02GiB
+    Device unallocated:            1.91TiB
+    Device missing:                0.00B
+    Used:                          1.25MiB
+    Free (estimated):              976.99GiB      (min: 976.99GiB)
+    Data ratio:                    2.00
+    Metadata ratio:                2.00
+    Global reserve:                16.00MiB      (used: 0.00B)
+
+Data,RAID1: Size:1.00GiB, Used:512.00KiB
+   /dev/sdb        1.00GiB
+   /dev/sdc        1.00GiB
+
+Metadata,RAID1: Size:1.00GiB, Used:112.00KiB
+   /dev/sdb        1.00GiB
+   /dev/sdc        1.00GiB
+
+System,RAID1: Size:8.00MiB, Used:16.00KiB
+    /dev/sdb        8.00MiB
+    /dev/sdc        8.00MiB
+
+Unallocated:
+    /dev/sdb        975.99GiB
+    /dev/sdc        975.99GiB
+```
+
+Here’s what happens when we store some files into the new filesystem and then add a third disk:
+
+```bash
+$ mkdir /mnt/demo/usr
+$ cd /usr; tar cf - . | (cd /mnt/demo/usr; sudo tar xfp -) # copy archived /usr to the new filesystem
+
+$ sudo btrfs device add /dev/sdd /mnt/demo
+$ sudo btrfs filesystem usage /mnt/demo
+
+Overall:
+    <omitted>
+
+Data,RAID1: Size:3.00GiB, Used:2.90GiB
+    /dev/sdb        3.00GiB
+    /dev/sdc        3.00GiB
+
+Metadata,RAID1: Size:1.00GiB, Used:148.94MiB
+    /dev/sdb        1.00GiB
+    /dev/sdc        1.00GiB
+
+System,RAID1: Size:8.00MiB, Used:16.00KiB
+    /dev/sdb        8.00MiB
+    /dev/sdd        978.00GiB
+
+    /dev/sdc        973.99GiB
+    /dev/sdb        973.99GiB
+
+Unallocated:
+    /dev/sdc        8.00MiB
+```
+
+The new disk, /dev/sdd, has become available to the pool, but the existing block groups are fine as they were, so none of them reference the new disk. If we want to use the new disk, we need to rebalance the filesystem:
+
+```bash
+$ sudo btrfs balance start --full-balance /mnt/demo
+```
+
+### Volumes and subvolumes
+
+Btrfs volumes are created with the `btrfs subvolume create` command.
+
+```bash
+$ sudo btrfs subvolume create /mnt/demo/home
+```
+
+### Volume snapshots
+
+Snapshots are created with the `btrfs subvolume snapshot` command.
+
+```bash
+$ sudo btrfs subvolume snapshot /mnt/demo/home /mnt/demo/home-snap
+```
+
+Unlike ZFS, Btrfs snapshots are read-write, so you can modify them. Pass the `-r` option to create a read-only snapshot.
+
+Also Btrfs has no "rollback" command, you have to move the original subvolume to a new name and then move the snapshot to the original name.
+
+## Backup strategy
+
+Regardless of the exact technology you use to implement backups, you need a written plan that answers the following questions:
+
+* Overall strategy:
+
+- What data is to be backed up?
+- What system or technology will perform the backups?
+- Where will the backups be stored?
+- Will the backups be encrypted? If so where will encryption keys be stored?
+- How much will it cost to store the backups?
+
+* Timelines:
+
+- How often will backups be performed?
+- How often will backups be validated and restore-tested?
+- How long will backups be retained?
+
+* People:
+
+- Who will have access to the backups?
+- Who will have access to the encryption keys?
+
+* Use and protection:
+
+- How will backup data be accessed or restored in an emergency?
+- How will you ensure that neither a hacker nor a bogus process can corrupt, modify, or delete backups? (That is, how will you achieve immutability?)
+- How will backup data be protected against being taken hostage by an adversarial cloud provider, vendor, or government?
