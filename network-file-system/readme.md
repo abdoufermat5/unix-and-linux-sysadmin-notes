@@ -162,4 +162,30 @@ For this reason, enforcing consistent passwd files or relying on LDAP is essenti
 
 ### Root access and nobody account
 
+Root squashing in NFS prevents root on a client from having full privileges on NFS-mounted filesystems by mapping root (UID 0) to a lower-privileged pseudo-user like "nobody." While this restricts root's access to certain files, it doesn't fully protect user files, as root can still switch to any UID on the client.
+
+## Server-side NFS
+
+On NFSv3 there are one process for mounting and another process for accessing files: **mountd** and **nfsd** (in fact rpc.mountd and rpc.nfsd as they rely on rpc).
+NFSv4 does not use mountd at all!
+
+NFS uses a single access-control database that tells which filesystems should be exported and which clients cant mount them (a copy is kept in *xtab* file).
+
+SInce is a fool idea to maintain binary file by hand, we use /etc/exports to define things and *xtab* will rely on that file to reconstruct.
+
+### Linux exports
+
+Say we have the following:
+
+`/home *.users.admin.com(rw) 172.17.0.0/24(ro)`
+
+This lets **/home** be mounted by all machines in the users.admin.com domain, and read-only by all machines on the 172.17.0.0/24 class C network. If a user in the users.admin.com resides on the 172.17.0.0/24 network,
+that client will be granted read-only access. The least privileged rule wins.
+
+> [!IMPORTANT]
+> Filesystems listed in the exports file without a specific set of hosts are usually mountable by all machines. That’s a **sizable security hole**.
+> The same sizable security hole can be created accidentally by a misplaced space. For example, the line
+> `/homr/critical-data    *.users.admin.com(rw)` 
+> permits any host read/write access except for *.users.admin.com, which has read-only permission, the default. OOOOOPPPSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS!
+> ![stress](https://imgflip.com/s/meme/Two-Buttons.jpg)
 
