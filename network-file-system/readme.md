@@ -189,3 +189,176 @@ that client will be granted read-only access. The least privileged rule wins.
 > permits any host read/write access except for *.users.admin.com, which has read-only permission, the default. OOOOOPPPSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS!
 > ![stress](https://imgflip.com/s/meme/Two-Buttons.jpg)
 
+![client-specs](./data/client-specs.png)
+
+Common exports options:
+
+| Option           | Description                                                                         |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| ro               | Exports read-only                                                                   |
+| rw               | Exports for reading and writing (default)                                           |
+| rw=list          | read-mostly, the list enumerates the hosts allowed to mount for writing             |
+| root_squash      | Maps "squashes" UID 0 and GID 0 (on client) to anonuid and anongid (on nfs server). |
+| no_root_squash   | Allows normal access by root (Dangerous)                                            |
+| all_squash       | ALL users (root and regular) are mapped to anonymous user                           |
+| anonuid/anongid  | specifies the uid/gid mapped to anonymous user                                      |
+| noaccess         | blocks access this dir and subdirs                                                  |
+| wdelay/no_wdelay | delay/or not writes                                                                 |
+| async            | Makes server reply to write request before actual disk write                        |
+| nohide/hide      | reveals/or hide filesystems mounted within exported subtree                         |
+| subtree_check    | verifies that each requested file is within an exported subtree                     |
+| no_subtree_check | verfies only that file requests refer to an exported filesystem                     |
+
+### nfsd: serve files
+
+NFS operations are handled by the nfsd daemon, which runs on the server side and processes client requests after validating them against /etc/exports; it's embedded in the kernel and managed through system services (like systemctl) rather than a configuration file.
+
+The number of NFS server threads (nfsd) is crucial for performance - too few or too many can hurt performance, and the optimal number depends on your hardware; monitor system load and NFS statistics (using `nfsstat`) to find the sweet spot for your setup.
+
+## Client-side NFS
+
+Before an NFS filesystem can be mounted, it must be properly exported. You can verify that by running a `showmount`:
+
+```bash
+showmount -e monk
+Export list for monk:
+/home/ben harp.atrust.com
+```
+
+The directory /home/ben on the server monk has been exported to the client system `harp.atrust.com`. To troublecheck make sure you've run `exportfs -a` on the server after defining the /etc/exports file then `systemctl restart nfs-kernel-server` or `service nfsd restart` and `service mountd reload` on FreeBSD.
+
+To actually mount the filesystem in NFSv2 and NFSv3 you can run the following command:
+
+```bash
+sudo mount -o rw,hard,intr,bg server:/home/ben /mnt/ben
+```
+
+Under NFSv4 it would be:
+
+```bash
+sudo mount -o rw,hard,intr,bg server:/ /mnt/ben
+```
+
+Here some option flags you can have with the `mount` command:
+
+| Flag   | Description                                                                     |
+| ------ | ------------------------------------------------------------------------------- |
+| rw     | Mounts the filesystem read/write                                                |
+| ro     | read-only                                                                       |
+| bg     | If mount fails keep trying in background and continue with other mount requests |
+| hard   | if server goes down block ops until server ready again                          |
+| soft   | Make ops fails instead of blocking them                                         |
+| intr   | allow users to interrupt blocked ops                                            |
+| nointr | disable interrupts                                                              |
+
+Using the `intr` (interruptible) option on an NFS mount allows users to interrupt or stop operations that would otherwise hang when the server goes down. This way, processes trying to access files on an unavailable server can be manually terminated, reducing the impact on the system.
+
+Jeff Forys :
+
+> [!IMPORTANT]
+> Most mounts should use hard, intr, and bg, because these options best preserve NFS’s original design goals. soft is an abomination, an ugly Satanic hack! If the user wants to interrupt, cool. Otherwise, wait for the server and all will eventually be well again with no data lost.
+
+Just like local filesystem you can unmount NFS using the `umount` command. If the NFS filesystem is busy (files open or something else) use the `umount -f` to force the unmount ops (TRUST ME BRUHHHH!). Well you can type `fuser` or `lsof` to see who is blocking.
+
+### Boot time mount
+
+To mount at boot time you can edit the `/etc/fstab` file:
+
+```bash
+# filesystem        mountpoint      fstype      flags                           dump    fsck
+dsi_sv:/home        /nfs/home       nfs         rw,bg,intr,hard,nosuid,nodev    0       0
+```
+
+Then run `mount -a -t nfs` for changes to take effect immediately without rebooting system.
+
+## nfsstat: Dump NFS statistics
+
+Type `nfsstat -c` to display client side statistics and `-s` for server side statistics.
+
+## Dedicated NFS file servers
+
+They are:
+
+- Optimized for high-performance NFS file service
+- Scalable to support large storage (terabytes) and numerous users
+- Enhanced reliability with simplified software, redundant hardware, and disk mirroring
+- Compatible with both UNIX and Windows clients
+- Often include integrated HTTPS, FTP, and SFTP servers
+- Superior backup and checkpoint features compared to standard UNIX systems
+
+We all love NFS servers made by NetApp, EMC, AWS...
+
+In AWS, the EFS service is a scalable NFSv4.1 server-as-a-service that exports filesystems to EC2 instances. Each filesystem can support multiple GiB/s throughput, depending upon the size of the filesystem.
+
+## Automatic mounting
+
+It's hard to maintain `/etc/fstab` on large networks with hundreds of machines. An automounter, a type of daemon that mounts filesystems when they are referenced and unmounts them when they are no longer being used. 
+
+As described by Edward Tomasz Napierała, author of the FreeBSD automounter, this magic requires the cooperation of several related pieces of software:
+- `autofs`, a kernel-resident filesystem driver that watches a filesystem for mount requests, pauses the calling program, and invokes the automounter to mount the target filesystem before returning control to the caller
+- `automountd` and `autounmountd`, which read the administrative configuration and actually mount or unmount filesystems
+- `automount`, an administrative utility
+
+Automounters are like sneaky butlers: they create fake directories (virtual filesystems), and when you try to enter one, they silently open the real one behind the scenes.
+
+The automount implementations understand 3 kinds of configuration files: direct maps, indirect maps and master maps. the 2 first contain information about the filesystems to be automounted. A master map lists the direct and indirect maps that `automount` should pay attention to. Only one master map can be active at once. The default is at `/etc/auto_master` on FreeBSD and `/etc/auto.master` on Linux.
+
+We can also rely on NIS database or LDAP directory for the direct mapping.
+
+### Indirect maps
+
+Indirect maps automount several filesystems under a common directory. However, the path of the directory is specified in the master map, not in the indirect map itself.
+
+For example:
+
+```bash
+users   harp:/harp/users
+devel   -soft harp:/harp/devel
+info    -ro harp:/harp/info
+```
+This example
+(perhaps stored in `/etc/auto.harp`) tells automount that it can mount the directories `/harp/users`, `/harp/devel`, and `/harp/info` from the server `harp`, with `info` being mounted **read-only** and `devel` being mounted **soft**.
+
+### Direct maps
+
+Direct maps list filesystems that do not share a common prefix, such as **/usr/src** and **/cs/tools**.
+
+For example:
+
+```bash
+/usr/src    harp:/usr/src
+/cs/tools   -ro monk:/cs/tools
+```
+
+### Master maps
+
+A master map lists the direct and indirect maps that automount should pay attention to. For each indirect map, it also specifies the root directory to be used by the mounts defined in the map.
+
+```bash
+# Directory Map
+/harp       /etc/auto.harp  -proto=tcp
+/-          /etc/auto.direct
+```
+
+### Executable maps
+
+If a map file is executable, it’s assumed to be a script or program that dynamically generates automounting information. Instead of reading the map as a text file, the automounter executes it with an argument (the “key”) that indicates which subdirectory a user has attempted to access. The script prints an appropriate map entry; if the specified key is not valid, the script can simply exit without printing anything.
+
+Some systems come with a handy /etc/auto.net executable map that takes a hostname as a key and mounts all exported filesystems on that host.
+
+### Automount visibility
+
+When you list the contents of an automounted filesystem’s parent directory, the directory appears empty no matter how many filesystems have been automounted there. You cannot browse the automounts in a GUI filesystem browser.
+
+### Replicated filesystems
+
+In some cases, a read-only filesystem such as /usr/share might be identical on several different servers. Automount can handle multiple server sources for identical read-only filesystems (like /usr/share).
+
+This feature should only be used for read-only filesystems since automount cannot synchronize writes across multiple servers.
+
+An auto.direct file that defines /usr/man and /cs/tools as replicated filesystems might look like this:
+
+```bash
+/usr/man    -ro harp:/usr/share/man monk(1):/usr/man
+/cs/tools   -ro leopard,monk:/cs/tools
+```
