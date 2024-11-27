@@ -1,0 +1,11 @@
+# Use Debian as the base image
+FROM debian:latest
+
+# Install necessary tools (e.g., smbclient)
+RUN apt-get update && apt-get install -y smbclient iproute2
+
+# Set the working directory
+WORKDIR /root
+
+# This command will run when the container starts and keep it running interactively
+CMD ["tail", "-f", "/dev/null"]

@@ -1,0 +1,43 @@
+version: '3.9'
+
+services:
+  smb-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smb-server
+    networks:
+      trusted_network:
+
+  ben-pc:
+    build:
+      context: .
+      dockerfile: Dockerfile.clients
+    container_name: ben-pc
+    networks:
+      trusted_network:
+    
+
+  allan-pc:
+    build:
+      context: .
+      dockerfile: Dockerfile.clients
+    container_name: allan-pc
+    networks:
+      trusted_network:
+    
+
+  malicious-user-pc:
+    build:
+      context: .
+      dockerfile: Dockerfile.clients
+    container_name: malicious-user-pc
+    networks:
+      untrusted_network:
+    
+
+networks:
+  trusted_network:
+    driver: bridge
+  untrusted_network:
+    driver: bridge
