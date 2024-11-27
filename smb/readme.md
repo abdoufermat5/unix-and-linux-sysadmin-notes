@@ -2,7 +2,7 @@
 
 ![intro-samba](./data/danse-samba.jpg)
 
-NFS covers the most popular system for sharing files among UNIX and Linux systems. However, UNIX systems also need  to share files with Windows systems. This is where SMB comes in.
+NFS covers the most popular system for sharing files among UNIX and Linux systems. However, UNIX systems also need to share files with Windows systems. This is where SMB comes in.
 
 ![smb-history](./data/smb-history.png)
 Although it’s common within the industry to refer to SMB fileshares as CIFS, the truth is that CIFS was deprecated long ago; only SMB lives on.
@@ -41,6 +41,7 @@ The most common use of Samba is to share files with Windows clients. Access to t
 The simplest way to authenticate users who want to access Samba shares is by creating a local account for them on the UNIX or Linux server.
 
 As example in `smb.conf` file:
+
 ```bash
 [global]
 workgroup = ulsah
@@ -81,7 +82,7 @@ Example:
 [abdoushare]
 path = /home/asadiakhou/youtube_downloads
 browseable = yes
-read only = no 
+read only = no
 create mask = 0777  # all rights
 directory mask = 0777 # everything
 public = yes # everyone
@@ -104,7 +105,6 @@ The %S expand to the username associated with each share, restricting access to 
 
 Samba uses its magic [homes] section as a last resort. If a particular user’s home directory has ancexplicitly defined share in the configuration file, the parameters set there override the values set through [homes].
 
-
 We can share projects with samba, allowing only members of the group to mount the share.
 
 ```text
@@ -115,5 +115,57 @@ path = /home/eng
 ; Disable ACLs (too complicated to handle)
 nt acl support = no
 
+: sensible permissions on all files and setgid bit set for dirs
 create mask = 0660
-directory 
+directory mask = 2770
+force directory mode = 2000
+force group = eng
+
+browseable = no
+read_only = no
+guest ok = no
+```
+
+With this if user Ben in the `eng` team can mount the smb share on his pc.
+If Ben create a new file in the share `home/eng` this will have `-rw-rw---- 1 ben eng 1024 Nov 24 14:30 remote_file.txt` permissions.
+If Ben create a dir called `projectBen` Samba will apply the `directory mask = 2770` and `force directory mode = 2000` rule:
+
+```
+drwxrws--- 2 ben eng 4096 Nov 24 14:35 projectBen
+```
+
+The setgid (`s`) ensures all files or directories created inside `projectBen` automatically belong to the `eng` group.
+
+If Allan join the projectBen and create a file `test.txt` this would be listed as `-rw-rw---- 1 allan eng 512 Nov 24 15:45 test.txt`.
+
+## Mounting SMB file shares
+
+Mounting for SMB file shares works quite differently from how it’s done for other network filesystems. In particular, SMB volumes are mounted by a specific user rather than being mounted by the system itself.
+
+On linux: `sudo mount -t cifs -o username=abdou //smb-server/eng /home/abdou/eng`
+
+In UNIX/Linux, a mounted network share is viewed as a system-wide resource, typically owned by the user who mounts it (often root unless you specify uid,gid,fmask or dmask options), without associating it with individual users. In contrast, Windows treats network shares as user-specific, with access controlled by each user's permissions.
+
+## Browsing SMB file shares
+
+Samba includes a command-line utility called `smbclient` that lets you list file shares without actually mounting them. It also define an FTP-like interface for interactive access.
+
+Once you're connected type `help`.
+
+![chill guy](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_9bE7txw_Nqjl-JAli54YuH1zcJMEsuMFIg&s)
+
+## Ensuring Samba security
+
+It’s important to be aware of the security implications of sharing files and other resources over a network. For a typical site, you need to do two things to ensure a basic level of security:
+
+- Explicitly specify which clients can access the resources shared by Samba (`hosts allow` and `hosts deny`).
+
+- Block access to the server from outside your organization. Samba does not use encryption for its data transport (only for password authentication).
+
+Blocking is typically implemented at the network firewall level.
+
+## Debugging Samba
+
+To debug Samba you can consult two sources: `smbstatus` command or Samba's logging facilities.
+
+If something wrong check the `smb.conf` options and adjust!
