@@ -104,7 +104,7 @@ Bindings link specific sets of operations (like installing software, applying co
 - **Specific hosts:** Individual systems.
 - **Groups of hosts:** Systems that share characteristics, such as being in the same role or geographic region.
 
-[look-here-for-examples](./training/bindings-examples.yml)
+[look-here-for-examples](./training/bindings-examples.md)
 
 ### Bundles and bundle repositories
 
