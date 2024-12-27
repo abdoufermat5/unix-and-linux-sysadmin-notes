@@ -74,6 +74,9 @@ Xen and KVM are the leading open source virtualization projects for Linux. Xen i
 
 ### Xen
 
+![xen-arm-arch](https://wiki.xenproject.org/images/thumb/0/09/Xen_arch1.png/600px-Xen_arch1.png)
+![xen-arch-2](https://wiki.xenproject.org/images/thumb/c/c1/Xen_arch2.png/630px-Xen_arch2.png)
+
 Initially developed at the University of Cambridge (by Ian Pratt), Xen is a bare-metal hypervisor that runs directly on the physical hardware. A running virtual machine is called a domain. There is always at least one domain, referred  to as domain zero or `dom0`. Dom0 has full hardware access, manages the other domains, and runs all the hypervisor's own device drivers. Unprivileged domains are called `domU`.
 
 `Dom0` typically runs a Linux distribution. It looks just like any other Linux system but includes the daemons, tools, and libraries that complete the Xen architecture and enable communication among `domU`, `dom0`, and the hypervisor.
@@ -85,6 +88,8 @@ The hypervisor is responsible for CPU scheduling and memory management for the s
 Each Xen guest-domain config file in `/etc/xen` specifies the virtual resources available to a `domU`, including disk devices, CPU, memory, and network interfaces. Each `domU` has a separate config file.
 
 ![xen-comp-dom0](./data/xen-comp-dom0.png)
+
+for more information on Xen, visit [Xen Project Wiki](https://wiki.xenproject.org/wiki/Xen_ARM_with_Virtualization_Extensions_whitepaper).
 
 ### Xen guest installation
 
