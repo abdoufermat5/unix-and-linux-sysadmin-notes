@@ -1,0 +1,37 @@
+services:
+  openvpn:
+    image: kylemanna/openvpn:latest
+    container_name: openvpn-server
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./openvpn-data/conf:/etc/openvpn
+    ports:
+      - "40000:1194/udp"
+    networks:
+      - vpn_network
+    restart: always
+
+  webserver:
+    image: nginx:latest
+    container_name: internal-webserver
+    volumes:
+      - ./webserver/html:/usr/share/nginx/html:ro
+    networks:
+      - vpn_network
+    restart: always
+
+  ubuntu-server:
+    image: ubuntu:latest
+    container_name: internal-ubuntu
+    command: tail -f /dev/null # Keep it running
+    networks:
+      - vpn_network
+    restart: always
+
+networks:
+  vpn_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
