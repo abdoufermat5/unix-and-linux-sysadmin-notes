@@ -73,3 +73,7 @@ A volume is mounted to the `lab-[debian|centos]` container. You can use this vol
 ## Why I am reading this book
 
 I am reading this book to learn more about Unix and Linux system administration. As a DevOps engineer, it's a must to know how to manage Unix and Linux systems. 
+
+## Author
+
+Abdou Yaya Sadiakhou, DevOps & Cloud Engineer: [abdoufermat.dev](https://abdoufermat.dev)
